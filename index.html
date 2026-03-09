@@ -1,51 +1,84 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub Pages Demo | Premium Landing</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/src/style.css">
-  </head>
-  <body>
-    <nav>
-      <div class="container">
-        <div class="logo">GHPages.Studio</div>
-      </div>
-    </nav>
 
-    <header class="container">
-      <h1 class="animate">
-        Your Vision, <br />
-        <span class="gradient-text">Beautifully Deployed.</span>
-      </h1>
-      <p class="hero-sub animate delay-1">
-        GitHub Pagesを利用すれば、あなたのアイデアを世界中に無料で。
-        モダンなテクノロジーと洗練されたデザインで、次のプロジェクトを輝かせましょう。
-      </p>
-      <div class="animate delay-2">
-        <a href="#github" class="btn btn-primary">今すぐ始める</a>
-      </div>
-    </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Explorer | GitHub Pages</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
 
-    <section class="container features">
-      <div class="card animate delay-2">
-        <h3>🚀 高速デプロイ</h3>
-        <p>GitHubにプッシュするだけで、数分後にはあなたのサイトが公開されます。複雑なサーバー設定は不要です。</p>
-      </div>
-      <div class="card animate delay-2">
-        <h3>🔒 無料 & 安全</h3>
-        <p>GitHubが提供する信頼性の高いインフラ上で動作。HTTPS対応も標準で、コストをかけずに安全なサイト運用が可能です。</p>
-      </div>
-      <div class="card animate delay-2">
-        <h3>✨ モダンな開発</h3>
-        <p>ViteとVanilla CSSを組み合わせた、軽量でパワフルな開発体験。自分だけのカスタマイズも自由自在です。</p>
-      </div>
+<body>
+  <div class="container">
+    <!-- Welcome View -->
+    <section id="hero">
+      <h1>Remote <span class="gradient-text">Explorer</span></h1>
+      <p style="color: var(--text-dim)">ワークスペースをクラウドからブラウズ。設定からトークンを入力して始めてください。</p>
     </section>
 
-    <script type="module" src="/src/main.js"></script>
-  </body>
+    <!-- Explorer View -->
+    <section id="explorer-view">
+      <div class="explorer-header">
+        <div class="breadcrumb" id="breadcrumb">
+          <span data-path="">root</span>
+        </div>
+      </div>
+      <ul class="file-list" id="file-list">
+        <!-- Files will be injected here -->
+      </ul>
+    </section>
+  </div>
+
+  <!-- Bottom Dock -->
+  <div class="dock-container">
+    <div class="dock">
+      <div class="dock-item" id="dock-home" title="Home">🏠</div>
+      <div class="dock-item" id="dock-files" title="Explorer">📂</div>
+      <div class="dock-item" id="dock-settings" title="Settings">⚙️</div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <h2>Connection Settings</h2>
+      <div class="form-group">
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="input-token" placeholder="ghp_xxxxxxxxxxxx">
+      </div>
+      <div class="form-group">
+        <label>Repository (Owner/Repo)</label>
+        <input type="text" id="input-repo" placeholder="AIFinanceLab/workspace">
+      </div>
+      <div class="form-group">
+        <label>Access Password (Security)</label>
+        <input type="password" id="input-password" placeholder="サイト閲覧用パスワード">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="btn-settings-close">キャンセル</button>
+        <button class="btn-small" id="btn-settings-save">設定を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal">
+      <h2>Authentication</h2>
+      <p style="color: var(--text-dim); margin-bottom: 1rem">設定したアクセスパスワードを入力してください。</p>
+      <div class="form-group">
+        <input type="password" id="input-login-password" placeholder="Password">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-small" style="width: 100%" id="btn-login-submit">アクセス</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
 </html>
