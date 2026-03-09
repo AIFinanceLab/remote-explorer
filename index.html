@@ -21,15 +21,27 @@
 
     <!-- Explorer View -->
     <section id="explorer-view">
-      <div class="explorer-header">
+      <div class="explorer-header" id="explorer-header">
         <div class="breadcrumb" id="breadcrumb">
           <span data-path="">root</span>
         </div>
+        <div id="loading-indicator" style="display: none; font-size: 0.8rem; color: var(--accent)">Processing...</div>
       </div>
       <ul class="file-list" id="file-list">
-        <!-- Files will be injected here -->
+        <!-- Hierarchy will be injected here -->
       </ul>
     </section>
+  </div>
+
+  <!-- File Preview Overlay -->
+  <div id="preview-overlay">
+    <div class="preview-header">
+      <div class="preview-title" id="preview-filename">File Preview</div>
+      <div class="close-preview" id="close-preview">×</div>
+    </div>
+    <div class="preview-content">
+      <pre id="preview-body"></pre>
+    </div>
   </div>
 
   <!-- Bottom Dock -->
@@ -51,7 +63,7 @@
       </div>
       <div class="form-group">
         <label>Repository (Owner/Repo)</label>
-        <input type="text" id="input-repo" placeholder="AIFinanceLab/workspace">
+        <input type="text" id="input-repo" placeholder="AIFinanceLab/workspace" value="AIFinanceLab/workspace">
       </div>
       <div class="form-group">
         <label>Access Password (Security)</label>

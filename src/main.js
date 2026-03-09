@@ -15,6 +15,10 @@ const dom = {
   dockItems: document.querySelectorAll('.dock-item'),
   settingsModal: document.getElementById('settings-modal'),
   loginModal: document.getElementById('login-modal'),
+  previewOverlay: document.getElementById('preview-overlay'),
+  previewFilename: document.getElementById('preview-filename'),
+  previewBody: document.getElementById('preview-body'),
+  loading: document.getElementById('loading-indicator'),
   inputToken: document.getElementById('input-token'),
   inputRepo: document.getElementById('input-repo'),
   inputPassword: document.getElementById('input-password'),
@@ -23,12 +27,12 @@ const dom = {
 
 // --- Initialization ---
 function init() {
-  if (state.password) {
+  if (state.password && !state.isLoggedIn) {
     showModal('login-modal');
   } else if (state.token && state.repo) {
     state.isLoggedIn = true;
     showView('explorer');
-    loadFiles('');
+    loadRoot();
   }
 }
 
@@ -49,18 +53,9 @@ function closeModal(id) {
   document.getElementById(id).style.display = 'none';
 }
 
-// --- Data Fetching ---
-async function loadFiles(path) {
-  if (!state.token || !state.repo) {
-    alert('設定からGitHubトークンとリポジトリを指定してください。');
-    showModal('settings-modal');
-    return;
-  }
-
-  state.currentPath = path;
-  updateBreadcrumb(path);
-  dom.fileList.innerHTML = '<li class="file-item">Loading...</li>';
-
+// --- GitHub API Logic ---
+async function githubFetch(path) {
+  dom.loading.style.display = 'block';
   try {
     const response = await fetch(`https://api.github.com/repos/${state.repo}/contents/${path}`, {
       headers: {
@@ -69,58 +64,94 @@ async function loadFiles(path) {
       }
     });
 
-    if (!response.ok) throw new Error('API Error: ' + response.statusText);
-
-    const data = await response.json();
-    renderFiles(data);
-  } catch (err) {
-    dom.fileList.innerHTML = `<li class="file-item" style="color: #ef4444">${err.message}</li>`;
+    if (!response.ok) throw new Error('GitHub API Error: ' + response.statusText);
+    return await response.json();
+  } finally {
+    dom.loading.style.display = 'none';
   }
 }
 
-function renderFiles(files) {
-  dom.fileList.innerHTML = '';
+async function loadRoot() {
+  const data = await githubFetch('');
+  renderTree(data, dom.fileList);
+}
+
+function renderTree(items, container) {
+  container.innerHTML = '';
 
   // Sort: Directories first
-  files.sort((a, b) => (b.type === 'dir' ? 1 : -1) - (a.type === 'dir' ? 1 : -1));
+  items.sort((a, b) => (b.type === 'dir' ? 1 : -1) - (a.type === 'dir' ? 1 : -1));
 
-  files.forEach(file => {
+  items.forEach(item => {
     const li = document.createElement('li');
-    li.className = 'file-item';
-    const icon = file.type === 'dir' ? '📁' : '📄';
+    const isDir = item.type === 'dir';
 
-    li.innerHTML = `
+    // Item container
+    const itemEl = document.createElement('div');
+    itemEl.className = 'file-item';
+
+    const arrow = isDir ? '<span class="folder-arrow">▶</span>' : '<span class="folder-arrow"></span>';
+    const icon = isDir ? '📁' : '📄';
+
+    itemEl.innerHTML = `
+      ${arrow}
       <span class="icon">${icon}</span>
-      <span class="name">${file.name}</span>
+      <span class="name">${item.name}</span>
     `;
 
-    li.onclick = () => {
-      if (file.type === 'dir') {
-        loadFiles(file.path);
-      } else {
-        window.open(file.html_url, '_blank');
-      }
-    };
+    li.appendChild(itemEl);
 
-    dom.fileList.appendChild(li);
+    if (isDir) {
+      // Create nested list for children
+      const nextUl = document.createElement('ul');
+      nextUl.className = 'nested-list';
+      li.appendChild(nextUl);
+
+      itemEl.onclick = async (e) => {
+        e.stopPropagation();
+        const isExpanded = itemEl.classList.toggle('expanded');
+        nextUl.style.display = isExpanded ? 'block' : 'none';
+
+        // Load children if not already loaded
+        if (isExpanded && nextUl.children.length === 0) {
+          const children = await githubFetch(item.path);
+          renderTree(children, nextUl);
+        }
+      };
+    } else {
+      itemEl.onclick = (e) => {
+        e.stopPropagation();
+        previewFile(item);
+      };
+    }
+
+    container.appendChild(li);
   });
 }
 
-function updateBreadcrumb(path) {
-  const parts = path.split('/').filter(p => p);
-  dom.breadcrumb.innerHTML = '<span data-path="">root</span>';
+// --- Preview Logic ---
+async function previewFile(file) {
+  dom.previewFilename.innerText = file.name;
+  dom.previewBody.innerText = 'Loading content...';
+  dom.previewOverlay.style.display = 'flex';
 
-  let currentAccumulatedPath = '';
-  parts.forEach(part => {
-    currentAccumulatedPath += (currentAccumulatedPath ? '/' : '') + part;
-    const span = document.createElement('span');
-    span.innerHTML = ` / ${part}`;
-    span.dataset.path = currentAccumulatedPath;
-    span.onclick = () => loadFiles(span.dataset.path);
-    dom.breadcrumb.appendChild(span);
-  });
+  try {
+    // Some files might be too large for 'content' field, better fetch raw or re-fetch content
+    const data = await githubFetch(file.path);
 
-  dom.breadcrumb.querySelector('span').onclick = () => loadFiles('');
+    if (data.encoding === 'base64') {
+      const decoded = decodeBase64(data.content);
+      dom.previewBody.innerText = decoded;
+    } else {
+      dom.previewBody.innerText = 'Unable to display this file type.';
+    }
+  } catch (err) {
+    dom.previewBody.innerText = 'Error loading file: ' + err.message;
+  }
+}
+
+function decodeBase64(str) {
+  return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
 }
 
 // --- Event Listeners ---
@@ -128,7 +159,7 @@ document.getElementById('dock-home').onclick = () => showView('home');
 document.getElementById('dock-files').onclick = () => {
   if (state.isLoggedIn || !state.password) {
     showView('explorer');
-    loadFiles(state.currentPath);
+    if (dom.fileList.children.length === 0) loadRoot();
   } else {
     showModal('login-modal');
   }
@@ -154,7 +185,7 @@ document.getElementById('btn-settings-save').onclick = () => {
   if (state.token && state.repo) {
     state.isLoggedIn = true;
     showView('explorer');
-    loadFiles('');
+    loadRoot();
   }
 };
 
@@ -163,10 +194,14 @@ document.getElementById('btn-login-submit').onclick = () => {
     state.isLoggedIn = true;
     closeModal('login-modal');
     showView('explorer');
-    loadFiles('');
+    loadRoot();
   } else {
     alert('パスワードが違います。');
   }
+};
+
+document.getElementById('close-preview').onclick = () => {
+  dom.previewOverlay.style.display = 'none';
 };
 
 init();
