@@ -1,7 +1,7 @@
 // --- State Management ---
 let state = {
   token: localStorage.getItem('gh_token') || '',
-  repo: localStorage.getItem('gh_repo') || '',
+  repo: localStorage.getItem('gh_repo') || 'AIFinanceLab/workspace',
   password: localStorage.getItem('access_password') || '',
   isLoggedIn: false,
   currentPath: ''
