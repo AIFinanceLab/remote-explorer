@@ -132,7 +132,7 @@ function renderTree(items, container) {
 // --- Preview Logic ---
 async function previewFile(file) {
   dom.previewFilename.innerText = file.name;
-  dom.previewBody.innerText = 'Loading content...';
+  dom.previewBody.innerText = 'コンテンツを読み込み中...';
   dom.previewOverlay.style.display = 'flex';
 
   try {
@@ -143,10 +143,10 @@ async function previewFile(file) {
       const decoded = decodeBase64(data.content);
       dom.previewBody.innerText = decoded;
     } else {
-      dom.previewBody.innerText = 'Unable to display this file type.';
+      dom.previewBody.innerText = 'このファイルタイプは表示できません。';
     }
   } catch (err) {
-    dom.previewBody.innerText = 'Error loading file: ' + err.message;
+    dom.previewBody.innerText = 'ファイル読み込みエラー: ' + err.message;
   }
 }
 

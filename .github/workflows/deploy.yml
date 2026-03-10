@@ -1,5 +1,14 @@
-# Simple GitHub Pages Deployment Workflow
-name: Deploy to GitHub Pages
+---
+title: GitHub Pagesデプロイメントワークフロー
+author: Gemini Native
+date: 2026-03-10
+description: リモートエクスプローラーをGitHub Pagesに自動デプロイするワークフロー
+version: 1.0
+tags: [ci-cd, github-pages, remote-explorer]
+---
+
+# GitHub Pages デプロイメント ワークフロー
+name: GitHub Pagesへデプロイ
 
 on:
   push:
@@ -22,23 +31,23 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
-      - name: Set up Node
+      - name: Node.js環境をセットアップ
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-      - name: Install dependencies
+      - name: 依存パッケージをインストール
         run: npm install
-      - name: Build
+      - name: アプリケーションをビルド
         run: npm run build
-      - name: Setup Pages
+      - name: Pagesをセットアップ
         uses: actions/configure-pages@v4
-      - name: Upload artifact
+      - name: 成果物をアップロード
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
-      - name: Deploy to GitHub Pages
+      - name: GitHub Pagesへデプロイ
         id: deployment
         uses: actions/deploy-pages@v4
