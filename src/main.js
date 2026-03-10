@@ -202,11 +202,8 @@ function initTerminal() {
 
   // Connect WebSocket to backend server (dynamically detect host)
   // Use user-defined wsUrl if available, otherwise guess.
-  const wsHost = window.location.hostname || 'localhost';
-  const guessedUrl = window.location.protocol === 'https:' 
-    ? `wss://${wsHost}:8080` 
-    : `ws://${wsHost}:8080`;
-  const wsUrl = state.wsUrl || guessedUrl;
+  // For production GitHub Pages, default to the secure Tailscale Serve URL to avoid Mixed Content
+  const wsUrl = state.wsUrl || 'wss://macbook-air.taild4f7f4.ts.net';
   
   try {
     ws = new WebSocket(wsUrl);
