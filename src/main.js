@@ -193,12 +193,16 @@ function initTerminal() {
   term.open(dom.terminalContainer);
   fitAddon.fit();
 
-  // Connect WebSocket to local server
-  ws = new WebSocket('ws://localhost:8080');
+  // Connect WebSocket to backend server (dynamically detect host)
+  // If accessing via Tailscale IP (e.g., http://100.94.17.84:5173), this will use the same IP.
+  const wsHost = window.location.hostname || 'localhost';
+  const wsUrl = `ws://${wsHost}:8080`;
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     term.writeln('*** Connected to Local Terminal Server ***');
-    term.writeln('※ 注意: リモートサーバーではなく、現在このUIを開いているマシンのシェルが起動しています。');
+    term.writeln(`※ 接続先: ${wsUrl}`);
+    term.writeln('※ 注意: 現在このUIを開いているホストマシンのシェルが起動しています。');
   };
 
   ws.onmessage = (event) => {

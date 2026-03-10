@@ -47,7 +47,8 @@ wss.on('connection', (ws) => {
 });
 
 const PORT = 8080;
-server.listen(PORT, () => {
-  console.log(`[Terminal Server] Listening on http://localhost:${PORT}`);
-  console.log(`[Terminal Server] WebSocket endpoint ws://localhost:${PORT}`);
+// Bind to 0.0.0.0 to allow external connections (like Tailscale)
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`[Terminal Server] Listening on http://0.0.0.0:${PORT}`);
+  console.log(`[Terminal Server] WebSocket endpoint ws://0.0.0.0:${PORT}`);
 });
