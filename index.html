@@ -32,9 +32,10 @@
       </ul>
     </section>
     <!-- Terminal View -->
-    <section id="terminal-view" style="display: none; height: 100vh; padding: 2rem; background: var(--bg-card); border-radius: 12px; margin: 2rem;">
-      <h2 style="color: var(--text)">Terminal</h2>
-      <div id="terminal-container" style="height: calc(100% - 40px); background: #000; border-radius: 6px; padding: 10px; overflow: hidden;"></div>
+    <section id="terminal-view" style="display: none; height: 100vh; width: 100vw; background: #000; position: fixed; top: 0; left: 0; z-index: 100;">
+      <div id="terminal-container" style="height: calc(100% - 70px); width: 100%; padding: 5px; box-sizing: border-box; overflow: hidden;"></div>
+      <!-- Add a close button for full screen terminal -->
+      <div style="position: absolute; bottom: 85px; right: 20px; background: rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white;" onclick="document.getElementById('dock-files').click()">✕</div>
     </section>
   </div>
 
@@ -74,6 +75,11 @@
       <div class="form-group">
         <label>Access Password (Security)</label>
         <input type="password" id="input-password" placeholder="サイト閲覧用パスワード">
+      </div>
+      <div class="form-group">
+        <label>Terminal WS URL (Optional)</label>
+        <input type="text" id="input-ws-url" placeholder="ws://100.94.17.84:8080">
+        <small style="color: var(--text-dim); display: block; margin-top: 5px;">空の場合は自動推測されます</small>
       </div>
       <div class="modal-actions">
         <button class="btn-ghost" id="btn-settings-close">キャンセル</button>

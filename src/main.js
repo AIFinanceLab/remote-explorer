@@ -7,6 +7,7 @@ let state = {
   token: localStorage.getItem('gh_token') || '',
   repo: localStorage.getItem('gh_repo') || 'AIFinanceLab/workspace',
   password: localStorage.getItem('access_password') || '',
+  wsUrl: localStorage.getItem('gh_ws_url') || '',
   isLoggedIn: false,
   currentPath: ''
 };
@@ -28,6 +29,7 @@ const dom = {
   inputToken: document.getElementById('input-token'),
   inputRepo: document.getElementById('input-repo'),
   inputPassword: document.getElementById('input-password'),
+  inputWsUrl: document.getElementById('input-ws-url'),
   inputLoginPassword: document.getElementById('input-login-password')
 };
 
@@ -54,6 +56,9 @@ function showView(view) {
   // Terminal specific logic
   if (view === 'terminal') {
     initTerminal();
+    setTimeout(() => {
+      if (term) term.focus();
+    }, 100);
   }
 }
 
@@ -194,10 +199,19 @@ function initTerminal() {
   fitAddon.fit();
 
   // Connect WebSocket to backend server (dynamically detect host)
-  // If accessing via Tailscale IP (e.g., http://100.94.17.84:5173), this will use the same IP.
+  // Use user-defined wsUrl if available, otherwise guess.
   const wsHost = window.location.hostname || 'localhost';
-  const wsUrl = `ws://${wsHost}:8080`;
-  ws = new WebSocket(wsUrl);
+  const guessedUrl = window.location.protocol === 'https:' 
+    ? `wss://${wsHost}:8080` 
+    : `ws://${wsHost}:8080`;
+  const wsUrl = state.wsUrl || guessedUrl;
+  
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch(e) {
+    term.writeln(`\r\n*** WebSocket Connection Error to ${wsUrl} ***`);
+    return;
+  }
 
   ws.onopen = () => {
     term.writeln('*** Connected to Local Terminal Server ***');
@@ -252,6 +266,7 @@ document.getElementById('dock-settings').onclick = () => {
   dom.inputToken.value = state.token;
   dom.inputRepo.value = state.repo;
   dom.inputPassword.value = state.password;
+  dom.inputWsUrl.value = state.wsUrl;
   showModal('settings-modal');
 };
 
@@ -260,10 +275,12 @@ document.getElementById('btn-settings-save').onclick = () => {
   state.token = dom.inputToken.value;
   state.repo = dom.inputRepo.value;
   state.password = dom.inputPassword.value;
+  state.wsUrl = dom.inputWsUrl.value;
 
   localStorage.setItem('gh_token', state.token);
   localStorage.setItem('gh_repo', state.repo);
   localStorage.setItem('access_password', state.password);
+  localStorage.setItem('gh_ws_url', state.wsUrl);
 
   closeModal('settings-modal');
   if (state.token && state.repo) {
