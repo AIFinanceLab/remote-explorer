@@ -31,6 +31,11 @@
         <!-- Hierarchy will be injected here -->
       </ul>
     </section>
+    <!-- Terminal View -->
+    <section id="terminal-view" style="display: none; height: 100vh; padding: 2rem; background: var(--bg-card); border-radius: 12px; margin: 2rem;">
+      <h2 style="color: var(--text)">Terminal</h2>
+      <div id="terminal-container" style="height: calc(100% - 40px); background: #000; border-radius: 6px; padding: 10px; overflow: hidden;"></div>
+    </section>
   </div>
 
   <!-- File Preview Overlay -->
@@ -49,6 +54,7 @@
     <div class="dock">
       <div class="dock-item" id="dock-home" title="Home">🏠</div>
       <div class="dock-item" id="dock-files" title="Explorer">📂</div>
+      <div class="dock-item" id="dock-terminal" title="Terminal">💻</div>
       <div class="dock-item" id="dock-settings" title="Settings">⚙️</div>
     </div>
   </div>

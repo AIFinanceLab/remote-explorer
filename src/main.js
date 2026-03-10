@@ -1,3 +1,7 @@
+import { Terminal } from 'xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import 'xterm/css/xterm.css';
+
 // --- State Management ---
 let state = {
   token: localStorage.getItem('gh_token') || '',
@@ -10,6 +14,8 @@ let state = {
 const dom = {
   hero: document.getElementById('hero'),
   explorer: document.getElementById('explorer-view'),
+  terminal: document.getElementById('terminal-view'),
+  terminalContainer: document.getElementById('terminal-container'),
   fileList: document.getElementById('file-list'),
   breadcrumb: document.getElementById('breadcrumb'),
   dockItems: document.querySelectorAll('.dock-item'),
@@ -40,9 +46,15 @@ function init() {
 function showView(view) {
   dom.hero.style.display = view === 'home' ? 'block' : 'none';
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
+  dom.terminal.style.display = view === 'terminal' ? 'block' : 'none';
 
   dom.dockItems.forEach(item => item.classList.remove('active'));
   document.getElementById(`dock-${view === 'explorer' ? 'files' : view}`).classList.add('active');
+
+  // Terminal specific logic
+  if (view === 'terminal') {
+    initTerminal();
+  }
 }
 
 function showModal(id) {
@@ -154,6 +166,73 @@ function decodeBase64(str) {
   return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
 }
 
+// --- Terminal Logic ---
+let term = null;
+let fitAddon = null;
+let ws = null;
+
+function initTerminal() {
+  if (term) {
+    // Already initialized
+    fitAddon.fit();
+    return;
+  }
+
+  term = new Terminal({
+    cursorBlink: true,
+    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+    theme: {
+      background: '#000000',
+      foreground: '#ffffff'
+    }
+  });
+
+  fitAddon = new FitAddon();
+  term.loadAddon(fitAddon);
+
+  term.open(dom.terminalContainer);
+  fitAddon.fit();
+
+  // Connect WebSocket to local server
+  ws = new WebSocket('ws://localhost:8080');
+
+  ws.onopen = () => {
+    term.writeln('*** Connected to Local Terminal Server ***');
+    term.writeln('※ 注意: リモートサーバーではなく、現在このUIを開いているマシンのシェルが起動しています。');
+  };
+
+  ws.onmessage = (event) => {
+    // Handle Blob from WebSocket (common in binary WS frames)
+    if (event.data instanceof Blob) {
+      const reader = new FileReader();
+      reader.onload = () => term.write(reader.result);
+      reader.readAsText(event.data);
+    } else {
+      term.write(event.data);
+    }
+  };
+
+  ws.onerror = (error) => {
+    term.writeln('\r\n*** WebSocket Error: Is the local server (node server.js) running on port 8080? ***');
+  };
+
+  ws.onclose = () => {
+    term.writeln('\r\n*** Disconnected from Server ***');
+  };
+
+  term.onData(data => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(data);
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (dom.terminal.style.display === 'block') {
+      fitAddon.fit();
+    }
+  });
+}
+
 // --- Event Listeners ---
 document.getElementById('dock-home').onclick = () => showView('home');
 document.getElementById('dock-files').onclick = () => {
@@ -164,6 +243,7 @@ document.getElementById('dock-files').onclick = () => {
     showModal('login-modal');
   }
 };
+document.getElementById('dock-terminal').onclick = () => showView('terminal');
 document.getElementById('dock-settings').onclick = () => {
   dom.inputToken.value = state.token;
   dom.inputRepo.value = state.repo;
