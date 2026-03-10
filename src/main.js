@@ -201,14 +201,16 @@ function initTerminal() {
   fitAddon.fit();
 
   // Connect WebSocket to backend server (dynamically detect host)
-  // Use user-defined wsUrl if available, otherwise guess.
-  // For production GitHub Pages, default to the secure Tailscale Serve URL to avoid Mixed Content
-  const wsUrl = state.wsUrl || 'wss://macbook-air.taild4f7f4.ts.net';
+  // Force the secure WSS URL for mobile Safari/Tailscale to avoid mixed content.
+  // We ignore state.wsUrl to prevent cached invalid URLs from breaking the app.
+  const wsUrl = 'wss://macbook-air.taild4f7f4.ts.net';
   
   try {
+    term.writeln(`Connecting to ${wsUrl}...`);
     ws = new WebSocket(wsUrl);
   } catch(e) {
     term.writeln(`\r\n*** WebSocket Connection Error to ${wsUrl} ***`);
+    term.writeln(e.message);
     return;
   }
 
