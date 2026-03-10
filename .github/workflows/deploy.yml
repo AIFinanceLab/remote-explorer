@@ -1,13 +1,11 @@
----
-title: GitHub Pagesデプロイメントワークフロー
-author: Gemini Native
-date: 2026-03-10
-description: リモートエクスプローラーをGitHub Pagesに自動デプロイするワークフロー
-version: 1.0
-tags: [ci-cd, github-pages, remote-explorer]
----
+# GitHub Pagesデプロイメントワークフロー
+# title: GitHub Pagesデプロイメントワークフロー
+# author: Gemini Native
+# date: 2026-03-10
+# description: リモートエクスプローラーをGitHub Pagesに自動デプロイするワークフロー
+# version: 1.0
+# tags: [ci-cd, github-pages, remote-explorer]
 
-# GitHub Pages デプロイメント ワークフロー
 name: GitHub Pagesへデプロイ
 
 on:
