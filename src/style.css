@@ -141,12 +141,12 @@ body {
 }
 
 .preview-header {
-  padding: 1rem 2rem;
+  padding: 1rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--glass-border);
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(15, 23, 42, 0.95);
 }
 
 .preview-title {
@@ -158,16 +158,18 @@ body {
 .preview-content {
   flex: 1;
   overflow: auto;
-  padding: 2rem;
+  padding: 1rem 1.5rem;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: #000;
 }
 
 .preview-content pre {
   color: #e2e8f0;
   white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  word-break: break-word;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .close-preview {
@@ -319,5 +321,6 @@ h1 {
 .gradient-text {
   background: linear-gradient(to right, #6366f1, #10b981);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
