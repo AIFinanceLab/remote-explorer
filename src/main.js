@@ -55,14 +55,7 @@ function showView(view) {
 
   // Terminal specific logic
   if (view === 'terminal') {
-    // 画面レイアウトの反映を待ってから初期化・リサイズ・フォーカスを行う
-    setTimeout(() => {
-      initTerminal();
-      if (term && fitAddon) {
-        fitAddon.fit();
-        term.focus();
-      }
-    }, 50);
+    initTerminal();
   }
 }
 
@@ -182,6 +175,8 @@ let ws = null;
 
 function initTerminal() {
   if (term) {
+    // Already initialized
+    fitAddon.fit();
     return;
   }
 
