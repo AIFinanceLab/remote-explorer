@@ -1,13 +1,8 @@
-import { Terminal } from 'xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import 'xterm/css/xterm.css';
-
 // --- State Management ---
 let state = {
   token: localStorage.getItem('gh_token') || '',
   repo: localStorage.getItem('gh_repo') || 'AIFinanceLab/workspace',
   password: localStorage.getItem('access_password') || '',
-  wsUrl: localStorage.getItem('gh_ws_url') || '',
   isLoggedIn: false,
   currentPath: ''
 };
@@ -15,8 +10,6 @@ let state = {
 const dom = {
   hero: document.getElementById('hero'),
   explorer: document.getElementById('explorer-view'),
-  terminal: document.getElementById('terminal-view'),
-  terminalContainer: document.getElementById('terminal-container'),
   fileList: document.getElementById('file-list'),
   breadcrumb: document.getElementById('breadcrumb'),
   dockItems: document.querySelectorAll('.dock-item'),
@@ -29,7 +22,6 @@ const dom = {
   inputToken: document.getElementById('input-token'),
   inputRepo: document.getElementById('input-repo'),
   inputPassword: document.getElementById('input-password'),
-  inputWsUrl: document.getElementById('input-ws-url'),
   inputLoginPassword: document.getElementById('input-login-password')
 };
 
@@ -48,15 +40,9 @@ function init() {
 function showView(view) {
   dom.hero.style.display = view === 'home' ? 'block' : 'none';
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
-  dom.terminal.style.display = view === 'terminal' ? 'block' : 'none';
 
   dom.dockItems.forEach(item => item.classList.remove('active'));
   document.getElementById(`dock-${view === 'explorer' ? 'files' : view}`).classList.add('active');
-
-  // Terminal specific logic
-  if (view === 'terminal') {
-    initTerminal();
-  }
 }
 
 function showModal(id) {
@@ -168,85 +154,6 @@ function decodeBase64(str) {
   return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
 }
 
-// --- Terminal Logic ---
-let term = null;
-let fitAddon = null;
-let ws = null;
-
-function initTerminal() {
-  if (term) {
-    // Already initialized
-    fitAddon.fit();
-    return;
-  }
-
-  term = new Terminal({
-    cursorBlink: true,
-    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    theme: {
-      background: '#000000',
-      foreground: '#ffffff'
-    }
-  });
-
-  fitAddon = new FitAddon();
-  term.loadAddon(fitAddon);
-
-  term.open(dom.terminalContainer);
-  fitAddon.fit();
-
-  // Connect WebSocket to backend server (dynamically detect host)
-  // Force the secure WSS URL for mobile Safari/Tailscale to avoid mixed content.
-  // We ignore state.wsUrl to prevent cached invalid URLs from breaking the app.
-  const wsUrl = 'wss://macbook-air.taild4f7f4.ts.net';
-  
-  try {
-    term.writeln(`Connecting to ${wsUrl}...`);
-    ws = new WebSocket(wsUrl);
-  } catch(e) {
-    term.writeln(`\r\n*** WebSocket Connection Error to ${wsUrl} ***`);
-    term.writeln(e.message);
-    return;
-  }
-
-  ws.onopen = () => {
-    term.writeln('*** Connected to Local Terminal Server ***');
-    term.writeln(`※ 接続先: ${wsUrl}`);
-    term.writeln('※ 注意: 現在このUIを開いているホストマシンのシェルが起動しています。');
-  };
-
-  ws.onmessage = (event) => {
-    // Handle Blob from WebSocket (common in binary WS frames)
-    if (event.data instanceof Blob) {
-      const reader = new FileReader();
-      reader.onload = () => term.write(reader.result);
-      reader.readAsText(event.data);
-    } else {
-      term.write(event.data);
-    }
-  };
-
-  ws.onerror = (error) => {
-    term.writeln('\r\n*** WebSocket Error: Is the local server (node server.js) running on port 8080? ***');
-  };
-
-  ws.onclose = () => {
-    term.writeln('\r\n*** Disconnected from Server ***');
-  };
-
-  term.onData(data => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(data);
-    }
-  });
-
-  window.addEventListener('resize', () => {
-    if (dom.terminal.style.display === 'block') {
-      fitAddon.fit();
-    }
-  });
-}
-
 // --- Event Listeners ---
 document.getElementById('dock-home').onclick = () => showView('home');
 document.getElementById('dock-files').onclick = () => {
@@ -257,12 +164,10 @@ document.getElementById('dock-files').onclick = () => {
     showModal('login-modal');
   }
 };
-document.getElementById('dock-terminal').onclick = () => showView('terminal');
 document.getElementById('dock-settings').onclick = () => {
   dom.inputToken.value = state.token;
   dom.inputRepo.value = state.repo;
   dom.inputPassword.value = state.password;
-  dom.inputWsUrl.value = state.wsUrl;
   showModal('settings-modal');
 };
 
@@ -271,12 +176,10 @@ document.getElementById('btn-settings-save').onclick = () => {
   state.token = dom.inputToken.value;
   state.repo = dom.inputRepo.value;
   state.password = dom.inputPassword.value;
-  state.wsUrl = dom.inputWsUrl.value;
 
   localStorage.setItem('gh_token', state.token);
   localStorage.setItem('gh_repo', state.repo);
   localStorage.setItem('access_password', state.password);
-  localStorage.setItem('gh_ws_url', state.wsUrl);
 
   closeModal('settings-modal');
   if (state.token && state.repo) {
