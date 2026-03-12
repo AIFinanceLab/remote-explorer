@@ -141,21 +141,32 @@ function renderTree(items, container) {
 // --- Preview Logic ---
 async function previewFile(file) {
   dom.previewFilename.innerText = file.name;
-  dom.previewBody.innerText = 'コンテンツを読み込み中...';
+  dom.previewBody.innerHTML = '<div style="color: var(--text-dim)">読み込み中...</div>';
   dom.previewOverlay.style.display = 'flex';
 
+  const ext = file.name.split('.').pop().toLowerCase();
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext);
+  const isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
+
   try {
-    // Some files might be too large for 'content' field, better fetch raw or re-fetch content
     const data = await githubFetch(file.path);
 
-    if (data.encoding === 'base64') {
+    if (isImage) {
+      dom.previewBody.innerHTML = `<img src="${data.download_url}" alt="${file.name}">`;
+    } else if (isVideo) {
+      dom.previewBody.innerHTML = `
+        <video controls autoplay name="media">
+          <source src="${data.download_url}" type="video/${ext === 'mov' ? 'mp4' : ext}">
+          お使いのブラウザは動画タグをサポートしていません。
+        </video>`;
+    } else if (data.encoding === 'base64') {
       const decoded = decodeBase64(data.content);
-      dom.previewBody.innerText = decoded;
+      dom.previewBody.innerHTML = `<pre>${decoded}</pre>`;
     } else {
-      dom.previewBody.innerText = 'このファイルタイプは表示できません。';
+      dom.previewBody.innerHTML = '<div style="color: var(--text-dim)">このファイルタイプは表示できません。</div>';
     }
   } catch (err) {
-    dom.previewBody.innerText = 'ファイル読み込みエラー: ' + err.message;
+    dom.previewBody.innerHTML = '<div style="color: #ef4444">エラー: ' + err.message + '</div>';
   }
 }
 
