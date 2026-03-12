@@ -91,7 +91,16 @@ function renderTree(items, container) {
     itemEl.className = 'file-item';
 
     const arrow = isDir ? '<span class="folder-arrow">▶</span>' : '<span class="folder-arrow"></span>';
-    const icon = isDir ? '📁' : '📄';
+    
+    let icon = isDir ? '📁' : '📄';
+    if (!isDir) {
+      const ext = item.name.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) {
+        icon = '🖼️';
+      } else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+        icon = '🎬';
+      }
+    }
 
     itemEl.innerHTML = `
       ${arrow}
