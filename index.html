@@ -36,7 +36,10 @@
   <!-- File Preview Overlay -->
   <div id="preview-overlay">
     <div class="preview-header">
-      <div class="preview-title" id="preview-filename">ファイルプレビュー</div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="preview-title" id="preview-filename">ファイルプレビュー</div>
+        <button id="btn-x-post" style="display: none; background: #fff; color: #000; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer;">𝕏 Post</button>
+      </div>
     </div>
     <div class="preview-content">
       <div id="preview-body"></div>
@@ -68,6 +71,10 @@
       <div class="form-group">
         <label>Access Password (Security)</label>
         <input type="password" id="input-password" placeholder="サイト閲覧用パスワード">
+      </div>
+      <div class="form-group">
+        <label>Backend Server URL (for 𝕏 Post)</label>
+        <input type="text" id="input-server-url" placeholder="https://xxx.trycloudflare.com">
       </div>
 
       <div class="modal-actions">

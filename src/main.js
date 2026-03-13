@@ -5,7 +5,9 @@ let state = {
   password: localStorage.getItem('access_password') || '',
   isLoggedIn: false,
   currentPath: '',
-  currentObjectURL: null
+  currentObjectURL: null,
+  serverUrl: localStorage.getItem('re_server_url') || '',
+  currentFile: null
 };
 
 const dom = {
@@ -23,7 +25,9 @@ const dom = {
   inputToken: document.getElementById('input-token'),
   inputRepo: document.getElementById('input-repo'),
   inputPassword: document.getElementById('input-password'),
-  inputLoginPassword: document.getElementById('input-login-password')
+  inputLoginPassword: document.getElementById('input-login-password'),
+  inputServerUrl: document.getElementById('input-server-url'),
+  btnXPost: document.getElementById('btn-x-post')
 };
 
 // --- Initialization ---
@@ -141,9 +145,17 @@ function renderTree(items, container) {
 
 // --- Preview Logic ---
 async function previewFile(file) {
+  state.currentFile = file;
   dom.previewFilename.innerText = file.name;
   dom.previewBody.innerHTML = '<div style="color: var(--text-dim)">読み込み中...</div>';
   dom.previewOverlay.style.display = 'flex';
+
+  // Show X-Post button if markdown
+  if (file.name.endsWith('.md')) {
+    dom.btnXPost.style.display = 'block';
+  } else {
+    dom.btnXPost.style.display = 'none';
+  }
 
   // Cleanup old object URL
   if (state.currentObjectURL) {
@@ -212,6 +224,7 @@ document.getElementById('dock-settings').onclick = () => {
   dom.inputToken.value = state.token;
   dom.inputRepo.value = state.repo;
   dom.inputPassword.value = state.password;
+  dom.inputServerUrl.value = state.serverUrl;
   showModal('settings-modal');
 };
 
@@ -220,10 +233,12 @@ document.getElementById('btn-settings-save').onclick = () => {
   state.token = dom.inputToken.value;
   state.repo = dom.inputRepo.value;
   state.password = dom.inputPassword.value;
+  state.serverUrl = dom.inputServerUrl.value;
 
   localStorage.setItem('gh_token', state.token);
   localStorage.setItem('gh_repo', state.repo);
   localStorage.setItem('access_password', state.password);
+  localStorage.setItem('re_server_url', state.serverUrl);
 
   closeModal('settings-modal');
   if (state.token && state.repo) {
@@ -246,9 +261,39 @@ document.getElementById('btn-login-submit').onclick = () => {
 
 document.getElementById('close-preview').onclick = () => {
   dom.previewOverlay.style.display = 'none';
+  dom.btnXPost.style.display = 'none';
   if (state.currentObjectURL) {
     URL.revokeObjectURL(state.currentObjectURL);
     state.currentObjectURL = null;
+  }
+};
+
+dom.btnXPost.onclick = async () => {
+  if (!state.currentFile || !state.currentFile.path) { alert('ファイルパスが不明です'); return; }
+  
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL (Cloudflare/IP):', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+    localStorage.setItem('re_server_url', url);
+  }
+
+  const dryRun = !window.confirm('本当に実投稿しますか？（キャンセルで Dry Run 実行）');
+  dom.loading.style.display = 'block';
+  
+  try {
+    const res = await fetch(`${url}/api/x-post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: state.currentFile.path, dryRun })
+    });
+    const data = await res.json();
+    alert(`${data.message}${dryRun ? ' (Dry Run)' : ''}\n${data.output || data.error || ''}`);
+  } catch (e) {
+    alert('投稿に失敗しました。サーバーURLとCORS設定を確認してください。');
+  } finally {
+    dom.loading.style.display = 'none';
   }
 };
 
