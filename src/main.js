@@ -4,7 +4,8 @@ let state = {
   repo: localStorage.getItem('gh_repo') || 'AIFinanceLab/workspace',
   password: localStorage.getItem('access_password') || '',
   isLoggedIn: false,
-  currentPath: ''
+  currentPath: '',
+  currentObjectURL: null
 };
 
 const dom = {
@@ -144,22 +145,45 @@ async function previewFile(file) {
   dom.previewBody.innerHTML = '<div style="color: var(--text-dim)">読み込み中...</div>';
   dom.previewOverlay.style.display = 'flex';
 
+  // Cleanup old object URL
+  if (state.currentObjectURL) {
+    URL.revokeObjectURL(state.currentObjectURL);
+    state.currentObjectURL = null;
+  }
+
   const ext = file.name.split('.').pop().toLowerCase();
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext);
   const isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext);
 
   try {
-    const data = await githubFetch(file.path);
+    if (isImage || isVideo) {
+      // Fetch media as blob with auth headers
+      const response = await fetch(`https://api.github.com/repos/${state.repo}/contents/${file.path}`, {
+        headers: {
+          'Authorization': `token ${state.token}`,
+          'Accept': 'application/vnd.github.v3.raw' // Important: Get raw bytes
+        }
+      });
 
-    if (isImage) {
-      dom.previewBody.innerHTML = `<img src="${data.download_url}" alt="${file.name}">`;
-    } else if (isVideo) {
-      dom.previewBody.innerHTML = `
-        <video controls autoplay name="media">
-          <source src="${data.download_url}" type="video/${ext === 'mov' ? 'mp4' : ext}">
-          お使いのブラウザは動画タグをサポートしていません。
-        </video>`;
-    } else if (data.encoding === 'base64') {
+      if (!response.ok) throw new Error('Failed to fetch media: ' + response.statusText);
+      const blob = await response.blob();
+      state.currentObjectURL = URL.createObjectURL(blob);
+
+      if (isImage) {
+        dom.previewBody.innerHTML = `<img src="${state.currentObjectURL}" alt="${file.name}">`;
+      } else {
+        dom.previewBody.innerHTML = `
+          <video controls autoplay name="media">
+            <source src="${state.currentObjectURL}" type="video/${ext === 'mov' ? 'mp4' : ext}">
+            お使いのブラウザは動画タグをサポートしていません。
+          </video>`;
+      }
+      return;
+    }
+
+    // Handle text files (JSON API)
+    const data = await githubFetch(file.path);
+    if (data.encoding === 'base64') {
       const decoded = decodeBase64(data.content);
       dom.previewBody.innerHTML = `<pre>${decoded}</pre>`;
     } else {
@@ -222,6 +246,10 @@ document.getElementById('btn-login-submit').onclick = () => {
 
 document.getElementById('close-preview').onclick = () => {
   dom.previewOverlay.style.display = 'none';
+  if (state.currentObjectURL) {
+    URL.revokeObjectURL(state.currentObjectURL);
+    state.currentObjectURL = null;
+  }
 };
 
 init();
