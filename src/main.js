@@ -361,14 +361,13 @@ function renderPostingList(files, container, isDraft) {
     div.innerHTML = `
       <div class="draft-info" onclick="openDraftEditor(${JSON.stringify(file).replace(/"/g, '&quot;')})">
         <div class="draft-name">${file.name}</div>
-        <div class="draft-path">${file.path}</div>
       </div>
       <div class="row-actions">
         ${isDraft ? `
-          <button class="row-btn post-btn" title="投稿（編集後に実投稿/Dry Run）">🚀</button>
-          <button class="row-btn move-btn" title="投稿済みに移動">📦</button>
+          <button class="row-btn post-btn" title="投稿">🚀</button>
+          <button class="row-btn move-btn" title="完了">📦</button>
         ` : `
-          <div style="font-size: 10px; color: var(--text-dim); margin-right: 10px;">Posted</div>
+          <div class="posted-badge">配信済み</div>
         `}
       </div>
     `;
