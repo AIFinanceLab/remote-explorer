@@ -354,13 +354,19 @@ function renderPostingList(files, container, isDraft) {
 
   container.innerHTML = '';
   files.forEach(file => {
+    const fileId = `file-${file.sha}`;
+    const dateStr = extractDateFromPath(file.path);
+    
     const div = document.createElement('div');
     div.className = 'draft-item';
     if (!isDraft) div.classList.add('posted-item');
 
     div.innerHTML = `
-      <div class="draft-info" onclick="openDraftEditor(${JSON.stringify(file).replace(/"/g, '&quot;')})">
-        <div class="draft-name">${file.name}</div>
+      <div class="draft-info" id="${fileId}" onclick="openDraftEditor(${JSON.stringify(file).replace(/"/g, '&quot;')})">
+        <div class="draft-name">
+          <span class="title-text">${file.name}</span>
+          <span class="draft-date">${dateStr}</span>
+        </div>
       </div>
       <div class="row-actions">
         ${isDraft ? `
@@ -386,7 +392,45 @@ function renderPostingList(files, container, isDraft) {
     }
 
     container.appendChild(div);
+    
+    // Async fetch the real title
+    fetchAndSetTitle(file, fileId);
   });
+}
+
+function extractDateFromPath(filePath) {
+  // artisans/x-poster/drafts/20260313_folder/post.md -> 2026/03/13
+  const match = filePath.match(/(\d{4})(\d{2})(\d{2})/);
+  if (match) {
+    return `${match[1]}/${match[2]}/${match[3]}`;
+  }
+  return '';
+}
+
+async function fetchAndSetTitle(file, domId) {
+  try {
+    const data = await githubFetch(file.path);
+    if (data.encoding === 'base64') {
+      const content = decodeBase64(data.content);
+      // Try to find title in frontmatter: "title: XXX"
+      let title = '';
+      const fmMatch = content.match(/^title:\s*(.*)$/m);
+      if (fmMatch) {
+        title = fmMatch[1].trim();
+      } else {
+        // Fallback to first H1: "# XXX"
+        const h1Match = content.match(/^#\s*(.*)$/m);
+        if (h1Match) title = h1Match[1].trim();
+      }
+
+      if (title) {
+        const el = document.querySelector(`#${domId} .title-text`);
+        if (el) el.innerText = title;
+      }
+    }
+  } catch (e) {
+    console.warn('Title fetch failed', e);
+  }
 }
 
 async function moveToPosted(file) {
