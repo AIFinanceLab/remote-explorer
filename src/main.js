@@ -365,7 +365,7 @@ function renderPostingList(files, container, isDraft) {
       <div class="draft-info" id="${fileId}">
         <div class="draft-icon-area"></div>
         <div class="draft-name">
-          <span class="title-text" onclick="openContentPreview(${JSON.stringify(file).replace(/"/g, '&quot;')})">${file.name}</span>
+          <span class="title-text">${file.name}</span>
           <span class="draft-date">${dateStr}</span>
         </div>
       </div>
@@ -379,6 +379,13 @@ function renderPostingList(files, container, isDraft) {
       </div>
     `;
 
+    // Attach listeners programmatically (module scope safe)
+    const titleEl = div.querySelector('.title-text');
+    titleEl.onclick = (e) => {
+      e.stopPropagation();
+      openContentPreview(file);
+    };
+
     if (isDraft) {
       div.querySelector('.post-btn').onclick = (e) => {
         e.stopPropagation();
@@ -389,7 +396,7 @@ function renderPostingList(files, container, isDraft) {
         moveToPosted(file);
       };
     } else {
-      div.querySelector('.draft-name').onclick = () => openContentPreview(file);
+      div.onclick = () => openContentPreview(file);
     }
 
     container.appendChild(div);
