@@ -378,10 +378,24 @@ h1 {
 .draft-name {
   font-weight: 600;
   font-size: 0.95rem;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.title-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin: 0;
+}
+
+.draft-date {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: normal;
+  white-space: nowrap;
 }
 
 .row-actions {
