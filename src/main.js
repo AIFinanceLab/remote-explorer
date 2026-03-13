@@ -27,7 +27,14 @@ const dom = {
   inputPassword: document.getElementById('input-password'),
   inputLoginPassword: document.getElementById('input-login-password'),
   inputServerUrl: document.getElementById('input-server-url'),
-  btnXPost: document.getElementById('btn-x-post')
+  btnXPost: document.getElementById('btn-x-post'),
+  
+  // Posting UI
+  posting: document.getElementById('posting-view'),
+  draftList: document.getElementById('draft-list'),
+  postOverlay: document.getElementById('posting-preview-overlay'),
+  postEditor: document.getElementById('post-editor'),
+  postFilename: document.getElementById('posting-filename')
 };
 
 // --- Initialization ---
@@ -45,6 +52,7 @@ function init() {
 function showView(view) {
   dom.hero.style.display = view === 'home' ? 'block' : 'none';
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
+  dom.posting.style.display = view === 'post' ? 'block' : 'none';
 
   dom.dockItems.forEach(item => item.classList.remove('active'));
   document.getElementById(`dock-${view === 'explorer' ? 'files' : view}`).classList.add('active');
@@ -220,6 +228,14 @@ document.getElementById('dock-files').onclick = () => {
     showModal('login-modal');
   }
 };
+document.getElementById('dock-post').onclick = () => {
+  if (state.isLoggedIn || !state.password) {
+    showView('post');
+    loadDrafts();
+  } else {
+    showModal('login-modal');
+  }
+};
 document.getElementById('dock-settings').onclick = () => {
   dom.inputToken.value = state.token;
   dom.inputRepo.value = state.repo;
@@ -296,5 +312,103 @@ dom.btnXPost.onclick = async () => {
     dom.loading.style.display = 'none';
   }
 };
+
+// --- Posting Logic ---
+async function loadDrafts() {
+  dom.draftList.innerHTML = '<p style="color: var(--text-dim)">ドラフトを検索中...</p>';
+  try {
+    const draftsPath = 'artisans/x-poster/drafts';
+    const items = await githubFetch(draftsPath);
+    
+    // We need to find all .md files recursively in subdirectories
+    let allMdFiles = [];
+    
+    // Simple 1-level deep search for now, given the structure
+    for (const item of items) {
+      if (item.type === 'dir') {
+        const subItems = await githubFetch(item.path);
+        const mdFiles = subItems.filter(f => f.name.endsWith('.md'));
+        allMdFiles = allMdFiles.concat(mdFiles);
+      } else if (item.name.endsWith('.md')) {
+        allMdFiles.push(item);
+      }
+    }
+
+    if (allMdFiles.length === 0) {
+      dom.draftList.innerHTML = '<p style="color: var(--text-dim)">ドラフトが見つかりませんでした。</p>';
+      return;
+    }
+
+    dom.draftList.innerHTML = '';
+    allMdFiles.forEach(file => {
+      const div = document.createElement('div');
+      div.className = 'draft-item';
+      div.innerHTML = `
+        <div class="draft-info">
+          <div class="draft-name">${file.name}</div>
+          <div class="draft-path">${file.path}</div>
+        </div>
+        <div style="font-size: 10px; color: var(--accent)">編集して投稿 ▸</div>
+      `;
+      div.onclick = () => openDraftEditor(file);
+      dom.draftList.appendChild(div);
+    });
+  } catch (err) {
+    dom.draftList.innerHTML = `<p style="color: #ef4444">ドラフト取得エラー: ${err.message}</p>`;
+  }
+}
+
+async function openDraftEditor(file) {
+  state.currentFile = file;
+  dom.postFilename.innerText = file.name;
+  dom.postEditor.value = '読み込み中...';
+  dom.postOverlay.style.display = 'flex';
+
+  try {
+    const data = await githubFetch(file.path);
+    if (data.encoding === 'base64') {
+      dom.postEditor.value = decodeBase64(data.content);
+    }
+  } catch (err) {
+    dom.postEditor.value = '読み込みに失敗しました: ' + err.message;
+  }
+}
+
+document.getElementById('close-posting-preview').onclick = () => {
+  dom.postOverlay.style.display = 'none';
+};
+
+async function executePosting(dryRun) {
+  if (!state.currentFile || !state.currentFile.path) return;
+  
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL (Tailscale IP/Cloudflare):', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+    localStorage.setItem('re_server_url', url);
+  }
+
+  const confirmMsg = dryRun ? 'Dry Run を実行しますか？' : '本当に実投稿しますか？';
+  if (!window.confirm(confirmMsg)) return;
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: state.currentFile.path, dryRun })
+    });
+    const data = await res.json();
+    alert(`${data.message}${dryRun ? ' (Dry Run)' : ''}\n${data.output || data.error || ''}`);
+  } catch (e) {
+    alert('投稿に失敗しました。サーバーURLとCORS設定を確認してください。');
+  } finally {
+    dom.loading.style.display = 'none';
+  }
+}
+
+document.getElementById('btn-final-post').onclick = () => executePosting(false);
+document.getElementById('btn-dry-post').onclick = () => executePosting(true);
 
 init();
