@@ -32,6 +32,7 @@ const dom = {
   // Posting UI
   posting: document.getElementById('posting-view'),
   draftList: document.getElementById('draft-list'),
+  postedList: document.getElementById('posted-list'),
   postOverlay: document.getElementById('posting-preview-overlay'),
   postEditor: document.getElementById('post-editor'),
   postFilename: document.getElementById('posting-filename')
@@ -316,45 +317,107 @@ dom.btnXPost.onclick = async () => {
 // --- Posting Logic ---
 async function loadDrafts() {
   dom.draftList.innerHTML = '<p style="color: var(--text-dim)">ドラフトを検索中...</p>';
+  dom.postedList.innerHTML = '<p style="color: var(--text-dim)">読み込み中...</p>';
+  
   try {
-    const draftsPath = 'artisans/x-poster/drafts';
-    const items = await githubFetch(draftsPath);
-    
-    // We need to find all .md files recursively in subdirectories
-    let allMdFiles = [];
-    
-    // Simple 1-level deep search for now, given the structure
-    for (const item of items) {
-      if (item.type === 'dir') {
-        const subItems = await githubFetch(item.path);
-        const mdFiles = subItems.filter(f => f.name.endsWith('.md'));
-        allMdFiles = allMdFiles.concat(mdFiles);
-      } else if (item.name.endsWith('.md')) {
-        allMdFiles.push(item);
-      }
-    }
+    const fetchDir = async (dir) => {
+      try {
+        const items = await githubFetch(dir);
+        let files = [];
+        for (const item of items) {
+          if (item.type === 'dir') {
+            const subItems = await githubFetch(item.path);
+            files = files.concat(subItems.filter(f => f.name.endsWith('.md')));
+          } else if (item.name.endsWith('.md')) {
+            files.push(item);
+          }
+        }
+        return files;
+      } catch (e) { return []; }
+    };
 
-    if (allMdFiles.length === 0) {
-      dom.draftList.innerHTML = '<p style="color: var(--text-dim)">ドラフトが見つかりませんでした。</p>';
-      return;
-    }
+    const drafts = await fetchDir('artisans/x-poster/drafts');
+    const posted = await fetchDir('artisans/x-poster/posted');
 
-    dom.draftList.innerHTML = '';
-    allMdFiles.forEach(file => {
-      const div = document.createElement('div');
-      div.className = 'draft-item';
-      div.innerHTML = `
-        <div class="draft-info">
-          <div class="draft-name">${file.name}</div>
-          <div class="draft-path">${file.path}</div>
-        </div>
-        <div style="font-size: 10px; color: var(--accent)">編集して投稿 ▸</div>
-      `;
-      div.onclick = () => openDraftEditor(file);
-      dom.draftList.appendChild(div);
-    });
+    renderPostingList(drafts, dom.draftList, true);
+    renderPostingList(posted, dom.postedList, false);
   } catch (err) {
-    dom.draftList.innerHTML = `<p style="color: #ef4444">ドラフト取得エラー: ${err.message}</p>`;
+    dom.draftList.innerHTML = `<p style="color: #ef4444">エラー: ${err.message}</p>`;
+  }
+}
+
+function renderPostingList(files, container, isDraft) {
+  if (files.length === 0) {
+    container.innerHTML = `<p style="color: var(--text-dim)">見つかりませんでした。</p>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  files.forEach(file => {
+    const div = document.createElement('div');
+    div.className = 'draft-item';
+    if (!isDraft) div.classList.add('posted-item');
+
+    div.innerHTML = `
+      <div class="draft-info" onclick="openDraftEditor(${JSON.stringify(file).replace(/"/g, '&quot;')})">
+        <div class="draft-name">${file.name}</div>
+        <div class="draft-path">${file.path}</div>
+      </div>
+      <div class="row-actions">
+        ${isDraft ? `
+          <button class="row-btn post-btn" title="投稿（編集後に実投稿/Dry Run）">🚀</button>
+          <button class="row-btn move-btn" title="投稿済みに移動">📦</button>
+        ` : `
+          <div style="font-size: 10px; color: var(--text-dim); margin-right: 10px;">Posted</div>
+        `}
+      </div>
+    `;
+
+    if (isDraft) {
+      div.querySelector('.post-btn').onclick = (e) => {
+        e.stopPropagation();
+        openDraftEditor(file);
+      };
+      div.querySelector('.move-btn').onclick = (e) => {
+        e.stopPropagation();
+        moveToPosted(file);
+      };
+    } else {
+      div.onclick = () => openDraftEditor(file);
+    }
+
+    container.appendChild(div);
+  });
+}
+
+async function moveToPosted(file) {
+  if (!window.confirm(`「${file.name}」を投稿済みフォルダへ移動しますか？`)) return;
+  
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+  }
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-move-to-posted`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: file.path })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('移動しました。GitHub Actions による更新まで少し時間がかかる場合があります。');
+      loadDrafts(); // UIを再読み込み
+    } else {
+      alert('移動に失敗しました: ' + data.details);
+    }
+  } catch (e) {
+    alert('サーバーに接続できません。');
+  } finally {
+    dom.loading.style.display = 'none';
   }
 }
 

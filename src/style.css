@@ -353,6 +353,49 @@ h1 {
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+.draft-item.posted-item {
+  border-left: 4px solid var(--primary);
+  background: rgba(99, 102, 241, 0.05);
+  opacity: 0.8;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1.2rem;
+}
+
+.row-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.row-btn.post-btn:hover {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+.row-btn.move-btn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
   h1 { font-size: 2rem !important; }

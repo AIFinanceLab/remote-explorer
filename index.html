@@ -34,11 +34,16 @@
 
     <!-- Posting View -->
     <section id="posting-view">
-      <h2 style="font-size: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-        ✍️ Draft Posting Application
-      </h2>
-      <div id="draft-list">
+      <h1 style="font-size: 2rem; margin-bottom: 2rem; margin-top: 2rem;">✍️ Post <span class="gradient-text">Drafts</span></h1>
+      
+      <h3 style="font-size: 14px; color: var(--accent); margin-bottom: 15px;">📝 未投稿（Drafts）</h3>
+      <div id="draft-list" style="margin-bottom: 40px;">
         <p style="color: var(--text-dim)">ドラフトを読み込み中...</p>
+      </div>
+
+      <h3 style="font-size: 14px; color: var(--primary); margin-bottom: 15px;">✅ 投稿済み（Posted）</h3>
+      <div id="posted-list">
+        <!-- Posted items will be injected here -->
       </div>
     </section>
   </div>
