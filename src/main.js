@@ -362,9 +362,10 @@ function renderPostingList(files, container, isDraft) {
     if (!isDraft) div.classList.add('posted-item');
 
     div.innerHTML = `
-      <div class="draft-info" id="${fileId}" onclick="openDraftEditor(${JSON.stringify(file).replace(/"/g, '&quot;')})">
+      <div class="draft-info" id="${fileId}">
+        <div class="draft-icon-area"></div>
         <div class="draft-name">
-          <span class="title-text">${file.name}</span>
+          <span class="title-text" onclick="openContentPreview(${JSON.stringify(file).replace(/"/g, '&quot;')})">${file.name}</span>
           <span class="draft-date">${dateStr}</span>
         </div>
       </div>
@@ -381,29 +382,29 @@ function renderPostingList(files, container, isDraft) {
     if (isDraft) {
       div.querySelector('.post-btn').onclick = (e) => {
         e.stopPropagation();
-        openDraftEditor(file);
+        openDraftEditor(file); // 編集・投稿用
       };
       div.querySelector('.move-btn').onclick = (e) => {
         e.stopPropagation();
         moveToPosted(file);
       };
     } else {
-      div.onclick = () => openDraftEditor(file);
+      div.querySelector('.draft-name').onclick = () => openContentPreview(file);
     }
 
     container.appendChild(div);
-    
-    // Async fetch the real title
     fetchAndSetTitle(file, fileId);
   });
 }
 
+async function openContentPreview(file) {
+  // 既存のプレビュー機能を利用
+  previewFile(file);
+}
+
 function extractDateFromPath(filePath) {
-  // artisans/x-poster/drafts/20260313_folder/post.md -> 2026/03/13
   const match = filePath.match(/(\d{4})(\d{2})(\d{2})/);
-  if (match) {
-    return `${match[1]}/${match[2]}/${match[3]}`;
-  }
+  if (match) return `${match[1]}/${match[2]}/${match[3]}`;
   return '';
 }
 
@@ -412,24 +413,36 @@ async function fetchAndSetTitle(file, domId) {
     const data = await githubFetch(file.path);
     if (data.encoding === 'base64') {
       const content = decodeBase64(data.content);
-      // Try to find title in frontmatter: "title: XXX"
+      
+      // Title extraction
       let title = '';
       const fmMatch = content.match(/^title:\s*(.*)$/m);
-      if (fmMatch) {
-        title = fmMatch[1].trim();
-      } else {
-        // Fallback to first H1: "# XXX"
+      if (fmMatch) title = fmMatch[1].trim();
+      else {
         const h1Match = content.match(/^#\s*(.*)$/m);
         if (h1Match) title = h1Match[1].trim();
       }
 
-      if (title) {
-        const el = document.querySelector(`#${domId} .title-text`);
-        if (el) el.innerText = title;
+      // Media icon extraction
+      let icon = '📄'; // Default
+      const mediaSection = content.match(/^media:\s*([\s\S]*?)(?=\n[a-z]|---|$)/m);
+      if (mediaSection) {
+        const mediaValue = mediaSection[1];
+        if (mediaValue.match(/\.(mp4|mov|webm|avi|mkv)/i)) icon = '🎬';
+        else if (mediaValue.match(/\.(jpg|jpeg|png|gif|svg|webp)/i)) icon = '🖼️';
+      }
+
+      const infoEl = document.getElementById(domId);
+      if (infoEl) {
+        const textEl = infoEl.querySelector('.title-text');
+        if (title && textEl) textEl.innerText = title;
+        
+        const iconArea = infoEl.querySelector('.draft-icon-area');
+        if (iconArea) iconArea.innerText = icon;
       }
     }
   } catch (e) {
-    console.warn('Title fetch failed', e);
+    console.warn('Metadata fetch failed', e);
   }
 }
 
