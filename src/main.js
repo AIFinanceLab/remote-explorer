@@ -71,7 +71,11 @@ function closeModal(id) {
 async function githubFetch(path) {
   dom.loading.style.display = 'block';
   try {
-    const response = await fetch(`https://api.github.com/repos/${state.repo}/contents/${path}`, {
+    // Cache buster to ensure we get the latest content (important for YAML changes)
+    const cb = `t=${Date.now()}`;
+    const url = `https://api.github.com/repos/${state.repo}/contents/${path}${path.includes('?') ? '&' : '?'}${cb}`;
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': `token ${state.token}`,
         'Accept': 'application/vnd.github.v3+json'
@@ -204,7 +208,7 @@ async function previewFile(file) {
 
     // Handle text files (JSON API)
     const data = await githubFetch(file.path);
-    if (data.encoding === 'base64') {
+    if (data.content) {
       const decoded = decodeBase64(data.content);
       dom.previewBody.innerHTML = `<pre>${decoded}</pre>`;
     } else {
@@ -216,7 +220,18 @@ async function previewFile(file) {
 }
 
 function decodeBase64(str) {
-  return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
+  try {
+    // Robust decoding for UTF-8 (Japanese)
+    const binStr = atob(str.replace(/\s/g, ''));
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+      bytes[i] = binStr.charCodeAt(i);
+    }
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch (e) {
+    // Fallback logic
+    return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
+  }
 }
 
 // --- Event Listeners ---
@@ -408,7 +423,6 @@ function renderPostingList(files, container, isDraft) {
 }
 
 async function openContentPreview(file) {
-  // 既存のプレビュー機能を利用
   previewFile(file);
 }
 
@@ -422,13 +436,14 @@ async function fetchAndSetTitle(file, domId) {
   try {
     const data = await githubFetch(file.path);
     if (data.content) {
-      const content = data.encoding === 'base64' ? decodeBase64(data.content) : data.content;
+      const content = decodeBase64(data.content);
       
-      // Improved regex: multiline, handle spaces, quotes
+      // Improved robust title extraction (YAML title: or # H1)
       let title = '';
       const fmMatch = content.match(/^\s*title:\s*(.*)$/m);
-      if (fmMatch) title = fmMatch[1].trim().replace(/^["']|["']$/g, '');
-      else {
+      if (fmMatch) {
+        title = fmMatch[1].trim().replace(/^["']|["']$/g, '');
+      } else {
         const h1Match = content.match(/^\s*#\s*(.*)$/m);
         if (h1Match) title = h1Match[1].trim();
       }
@@ -439,9 +454,9 @@ async function fetchAndSetTitle(file, domId) {
           const textEl = infoEl.querySelector('.title-text');
           if (textEl) textEl.innerText = title;
           
-          // Media icon extraction (robust)
+          // Media icon extraction logic
           let icon = '📄';
-          const mediaSection = content.match(/^\s*media:\s*([\s\S]*?)(?=\n[a-z]|---|^\s*$|$)/m);
+          const mediaSection = content.match(/^\s*media:\s*([\s\S]*?)(?=\n\w|---|^\s*$|$)/m);
           if (mediaSection) {
             const mediaValue = mediaSection[1];
             if (mediaValue.match(/\.(mp4|mov|webm|avi|mkv)/i)) icon = '🎬';
@@ -496,7 +511,7 @@ async function openDraftEditor(file) {
 
   try {
     const data = await githubFetch(file.path);
-    if (data.encoding === 'base64') {
+    if (data.content) {
       dom.postEditor.value = decodeBase64(data.content);
     }
   } catch (err) {
