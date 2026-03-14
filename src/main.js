@@ -541,8 +541,15 @@ async function executePosting(dryRun) {
     localStorage.setItem('re_server_url', url);
   }
 
+  // Only confirm for Dry Run or if we want to be safe, but for Rocket button (dryRun=false), let's skip it if already confirmed or if user wants immediate.
+  // Actually, per user request "Rocket button clicked -> Immediate post", we skip confirm here.
+  // But wait, the rocket button handler calls executePosting(false).
+  // Let's make it so it only confirms if it's NOT a direct rocket launch.
+  
+  /* 
   const confirmMsg = dryRun ? 'Dry Run を実行しますか？' : '本当に実投稿しますか？';
   if (!window.confirm(confirmMsg)) return;
+  */
 
   dom.loading.style.display = 'block';
   try {
@@ -551,10 +558,17 @@ async function executePosting(dryRun) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: state.currentFile.path, dryRun })
     });
+    
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.details || errData.error || `HTTP ${res.status}`);
+    }
+
     const data = await res.json();
-    alert(`${data.message}${dryRun ? ' (Dry Run)' : ''}\n${data.output || data.error || ''}`);
+    alert(`[${dryRun ? 'Dry Run' : 'Success'}] ${data.message}\n${data.output || ''}`);
   } catch (e) {
-    alert('投稿に失敗しました。サーバーURLとCORS設定を確認してください。');
+    console.error('X-Post Error:', e);
+    alert(`投稿に失敗しました。\nURL: ${url}/api/x-post\nエラー: ${e.message}\n\n※HTTPS(GitHub Pages)からHTTPへのアクセスはブラウザにブロックされる場合があります。`);
   } finally {
     dom.loading.style.display = 'none';
   }
