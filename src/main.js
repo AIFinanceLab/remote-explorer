@@ -209,7 +209,13 @@ async function previewFile(file) {
     // Handle text files (JSON API)
     const data = await githubFetch(file.path);
     if (data.content) {
-      const decoded = decodeBase64(data.content);
+      let decoded = decodeBase64(data.content);
+      
+      // Clean display for markdown: Strip YAML frontmatter in preview
+      if (file.name.endsWith('.md')) {
+        decoded = decoded.replace(/^---\s*[\s\S]*?---\s*/, '').trim();
+      }
+
       dom.previewBody.innerHTML = `<pre>${decoded}</pre>`;
     } else {
       dom.previewBody.innerHTML = '<div style="color: var(--text-dim)">このファイルタイプは表示できません。</div>';
