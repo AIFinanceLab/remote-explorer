@@ -413,7 +413,8 @@ function renderPostingList(files, container, isDraft) {
     if (isDraft) {
       div.querySelector('.post-btn').onclick = (e) => {
         e.stopPropagation();
-        openDraftEditor(file); 
+        state.currentFile = file; // Set context
+        executePosting(false); // Rocket 🚀 = Real Post
       };
       div.querySelector('.move-btn').onclick = (e) => {
         e.stopPropagation();
