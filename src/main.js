@@ -357,6 +357,9 @@ function renderPostingList(files, container, isDraft) {
     const fileId = `file-${file.sha}`;
     const dateStr = extractDateFromPath(file.path);
     
+    // Fallback title: parent folder name (e.g. 20260313_mirofish_spx_ai)
+    const folderName = file.path.split('/').slice(-2, -1)[0] || file.name;
+
     const div = document.createElement('div');
     div.className = 'draft-item';
     if (!isDraft) div.classList.add('posted-item');
@@ -365,7 +368,7 @@ function renderPostingList(files, container, isDraft) {
       <div class="draft-info" id="${fileId}">
         <div class="draft-icon-area"></div>
         <div class="draft-name">
-          <span class="title-text">${file.name}</span>
+          <span class="title-text">${folderName}</span>
           <span class="draft-date">${dateStr}</span>
         </div>
       </div>
@@ -379,9 +382,9 @@ function renderPostingList(files, container, isDraft) {
       </div>
     `;
 
-    // Attach listeners programmatically (module scope safe)
-    const titleEl = div.querySelector('.title-text');
-    titleEl.onclick = (e) => {
+    // Row-wide click listener for info area
+    const infoEl = div.querySelector('.draft-info');
+    infoEl.onclick = (e) => {
       e.stopPropagation();
       openContentPreview(file);
     };
@@ -389,7 +392,7 @@ function renderPostingList(files, container, isDraft) {
     if (isDraft) {
       div.querySelector('.post-btn').onclick = (e) => {
         e.stopPropagation();
-        openDraftEditor(file); // 編集・投稿用
+        openDraftEditor(file); 
       };
       div.querySelector('.move-btn').onclick = (e) => {
         e.stopPropagation();
@@ -418,38 +421,39 @@ function extractDateFromPath(filePath) {
 async function fetchAndSetTitle(file, domId) {
   try {
     const data = await githubFetch(file.path);
-    if (data.encoding === 'base64') {
-      const content = decodeBase64(data.content);
+    if (data.content) {
+      const content = data.encoding === 'base64' ? decodeBase64(data.content) : data.content;
       
-      // Title extraction
+      // Improved regex: multiline, handle spaces, quotes
       let title = '';
-      const fmMatch = content.match(/^title:\s*(.*)$/m);
-      if (fmMatch) title = fmMatch[1].trim();
+      const fmMatch = content.match(/^\s*title:\s*(.*)$/m);
+      if (fmMatch) title = fmMatch[1].trim().replace(/^["']|["']$/g, '');
       else {
-        const h1Match = content.match(/^#\s*(.*)$/m);
+        const h1Match = content.match(/^\s*#\s*(.*)$/m);
         if (h1Match) title = h1Match[1].trim();
       }
 
-      // Media icon extraction
-      let icon = '📄'; // Default
-      const mediaSection = content.match(/^media:\s*([\s\S]*?)(?=\n[a-z]|---|$)/m);
-      if (mediaSection) {
-        const mediaValue = mediaSection[1];
-        if (mediaValue.match(/\.(mp4|mov|webm|avi|mkv)/i)) icon = '🎬';
-        else if (mediaValue.match(/\.(jpg|jpeg|png|gif|svg|webp)/i)) icon = '🖼️';
-      }
-
-      const infoEl = document.getElementById(domId);
-      if (infoEl) {
-        const textEl = infoEl.querySelector('.title-text');
-        if (title && textEl) textEl.innerText = title;
-        
-        const iconArea = infoEl.querySelector('.draft-icon-area');
-        if (iconArea) iconArea.innerText = icon;
+      if (title) {
+        const infoEl = document.getElementById(domId);
+        if (infoEl) {
+          const textEl = infoEl.querySelector('.title-text');
+          if (textEl) textEl.innerText = title;
+          
+          // Media icon extraction (robust)
+          let icon = '📄';
+          const mediaSection = content.match(/^\s*media:\s*([\s\S]*?)(?=\n[a-z]|---|^\s*$|$)/m);
+          if (mediaSection) {
+            const mediaValue = mediaSection[1];
+            if (mediaValue.match(/\.(mp4|mov|webm|avi|mkv)/i)) icon = '🎬';
+            else if (mediaValue.match(/\.(jpg|jpeg|png|gif|svg|webp)/i)) icon = '🖼️';
+          }
+          const iconArea = infoEl.querySelector('.draft-icon-area');
+          if (iconArea) iconArea.innerText = icon;
+        }
       }
     }
   } catch (e) {
-    console.warn('Metadata fetch failed', e);
+    console.warn('Metadata fetch failed for', file.path, e);
   }
 }
 
