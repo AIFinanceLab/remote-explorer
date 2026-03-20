@@ -620,6 +620,7 @@ function renderPostingList(files, container, isDraft) {
         ${isDraft ? `
           <button class="row-btn post-btn" title="投稿">🚀</button>
           <button class="row-btn move-btn" title="完了">📦</button>
+          <button class="row-btn delete-btn" title="削除">🗑️</button>
         ` : `
           <div class="posted-badge">配信済み</div>
         `}
@@ -642,6 +643,10 @@ function renderPostingList(files, container, isDraft) {
       div.querySelector('.move-btn').onclick = (e) => {
         e.stopPropagation();
         moveToPosted(file);
+      };
+      div.querySelector('.delete-btn').onclick = (e) => {
+        e.stopPropagation();
+        deleteDraftFolder(file);
       };
     } else {
       div.onclick = () => openContentPreview(file);
@@ -703,8 +708,11 @@ async function fetchAndSetTitle(file, domId) {
 }
 
 async function moveToPosted(file) {
-  if (!window.confirm(`「${file.name}」を投稿済みフォルダへ移動しますか？`)) return;
-  
+  // Get parent folder path (e.g. artisans/x-poster/drafts/20260316_soft_kill_system)
+  const folderPath = file.path.replace(/\/[^/]+$/, '');
+  const folderName = folderPath.split('/').pop();
+  if (!confirm(`「${folderName}」を投稿済みフォルダへ移動しますか？`)) return;
+
   let url = state.serverUrl;
   if (!url) {
     url = prompt('Backend Server URL:', state.serverUrl);
@@ -717,14 +725,48 @@ async function moveToPosted(file) {
     const res = await fetch(`${url}/api/x-move-to-posted`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: file.path })
+      body: JSON.stringify({ path: folderPath })
     });
     const data = await res.json();
     if (res.ok) {
-      alert('移動しました。GitHub Actions による更新まで少し時間がかかる場合があります。');
+      alert(`${folderName} を投稿済みに移動しました。`);
       loadDrafts(); // UIを再読み込み
     } else {
       alert('移動に失敗しました: ' + data.details);
+    }
+  } catch (e) {
+    alert('サーバーに接続できません。');
+  } finally {
+    dom.loading.style.display = 'none';
+  }
+}
+
+async function deleteDraftFolder(file) {
+  // Get parent folder path (e.g. artisans/x-poster/drafts/20260316_soft_kill_system)
+  const folderPath = file.path.replace(/\/[^/]+$/, '');
+  const folderName = folderPath.split('/').pop();
+  if (!confirm(`「${folderName}」フォルダごと削除しますか？`)) return;
+
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+  }
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: folderPath })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`${folderName} を削除しました。`);
+      loadDrafts();
+    } else {
+      alert('削除に失敗しました: ' + (data.details || data.error));
     }
   } catch (e) {
     alert('サーバーに接続できません。');
@@ -833,5 +875,6 @@ document.getElementById('btn-dry-post').onclick = () => executePosting(true);
 window.executePostingForItem = executePostingForItem;
 window.moveToPostedFolder = moveToPostedFolder;
 window.deleteFolder = deleteFolder;
+window.deleteDraftFolder = deleteDraftFolder;
 
 init();
