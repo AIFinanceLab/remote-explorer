@@ -829,4 +829,9 @@ async function executePosting(dryRun) {
 document.getElementById('btn-final-post').onclick = () => executePosting(false);
 document.getElementById('btn-dry-post').onclick = () => executePosting(true);
 
+// Expose functions to global scope for onclick handlers
+window.executePostingForItem = executePostingForItem;
+window.moveToPostedFolder = moveToPostedFolder;
+window.deleteFolder = deleteFolder;
+
 init();
