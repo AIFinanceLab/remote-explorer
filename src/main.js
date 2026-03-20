@@ -55,17 +55,7 @@ function init() {
     draftsBtn.onclick = async () => {
       const data = await githubFetch('artisans/x-poster/drafts');
       if (data) {
-        // Update breadcrumb
-        dom.breadcrumb.innerHTML = `
-          <span data-path="" style="cursor:pointer">root</span>
-          <span style="color: var(--text-dim); margin: 0 4px;">/</span>
-          <span data-path="artisans/x-poster/drafts" class="shortcut-btn" id="drafts-btn" title="ドラフトフォルダへジャンプ">📝 Drafts</span>
-        `;
-        // Re-attach click handler for root
-        dom.breadcrumb.querySelector('[data-path=""]').onclick = () => {
-          loadRoot();
-          dom.breadcrumb.innerHTML = '<span data-path="">root</span>';
-        };
+        updateDraftsBreadcrumb();
         renderTree(data, dom.fileList);
       }
     };
@@ -73,6 +63,49 @@ function init() {
 }
 
 // --- Navigation & Views ---
+function updateDraftsBreadcrumb() {
+  dom.breadcrumb.innerHTML = `
+    <span data-path="" style="cursor:pointer">root</span>
+    <span style="color: var(--text-dim); margin: 0 4px;">/</span>
+    <span data-path="artisans/x-poster/drafts" class="shortcut-btn" id="drafts-btn" title="ドラフトフォルダへジャンプ">📝 Drafts</span>
+    <span class="draft-actions">
+      <button class="action-btn post-btn" id="btn-header-post" title="全ドラフトを投稿">🚀 投稿</button>
+      <button class="action-btn posted-btn" id="btn-header-posted" title="ポスト済みを表示">📋 ポスト済み</button>
+      <button class="action-btn delete-btn" id="btn-header-delete" title="選択ドラフトを削除">🗑️ デリート</button>
+    </span>
+  `;
+  // Re-attach click handler for root
+  dom.breadcrumb.querySelector('[data-path=""]').onclick = () => {
+    loadRoot();
+    dom.breadcrumb.innerHTML = '<span data-path="">root</span>';
+  };
+  // Re-attach drafts click handler
+  dom.breadcrumb.querySelector('#drafts-btn').onclick = async () => {
+    const data = await githubFetch('artisans/x-poster/drafts');
+    if (data) {
+      updateDraftsBreadcrumb();
+      renderTree(data, dom.fileList);
+    }
+  };
+  // Header post button
+  dom.breadcrumb.querySelector('#btn-header-post').onclick = () => executePosting(false);
+  // Header posted button
+  dom.breadcrumb.querySelector('#btn-header-posted').onclick = () => showView('post');
+  // Header delete button
+  dom.breadcrumb.querySelector('#btn-header-delete').onclick = () => {
+    const checked = document.querySelectorAll('.draft-check:checked');
+    if (checked.length === 0) {
+      alert('削除するドラフトを選択してください');
+      return;
+    }
+    if (!confirm(`${checked.length}件のドラフトを削除しますか？`)) return;
+    checked.forEach(el => {
+      const file = JSON.parse(el.dataset.file);
+      deleteFile(file);
+    });
+  };
+}
+
 function showView(view) {
   dom.hero.style.display = view === 'home' ? 'block' : 'none';
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
@@ -525,6 +558,35 @@ async function moveToPosted(file) {
       loadDrafts(); // UIを再読み込み
     } else {
       alert('移動に失敗しました: ' + data.details);
+    }
+  } catch (e) {
+    alert('サーバーに接続できません。');
+  } finally {
+    dom.loading.style.display = 'none';
+  }
+}
+
+async function deleteFile(file) {
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+  }
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: file.path })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`${file.name} を削除しました。`);
+      loadDrafts();
+    } else {
+      alert('削除に失敗しました: ' + (data.details || data.error));
     }
   } catch (e) {
     alert('サーバーに接続できません。');
