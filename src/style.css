@@ -166,16 +166,32 @@ body {
 }
 
 .draft-folder {
-  border-left: 3px solid rgba(59, 130, 246, 0.5);
+  border-left: 3px solid #3b82f6;
   padding-left: 8px;
   margin-left: -8px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
 }
 
 .posted-folder {
-  border-left: 3px solid rgba(16, 185, 129, 0.5);
+  border-left: 3px solid #10b981;
   padding-left: 8px;
   margin-left: -8px;
-  opacity: 0.7;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 4px;
+  opacity: 0.75;
+}
+
+.draft-folder .name::after {
+  content: " (未投稿)";
+  font-size: 0.75rem;
+  color: #3b82f6;
+}
+
+.posted-folder .name::after {
+  content: " (投稿済み)";
+  font-size: 0.75rem;
+  color: #10b981;
 }
 
 .file-list {
