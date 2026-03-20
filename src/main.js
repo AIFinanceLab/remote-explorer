@@ -28,14 +28,6 @@ const dom = {
   inputLoginPassword: document.getElementById('input-login-password'),
   inputServerUrl: document.getElementById('input-server-url'),
   btnXPost: document.getElementById('btn-x-post'),
-  
-  // Posting UI
-  posting: document.getElementById('posting-view'),
-  draftList: document.getElementById('draft-list'),
-  postedList: document.getElementById('posted-list'),
-  postOverlay: document.getElementById('posting-preview-overlay'),
-  postEditor: document.getElementById('post-editor'),
-  postFilename: document.getElementById('posting-filename')
 };
 
 // --- Initialization ---
@@ -137,7 +129,6 @@ function setDraftsBreadcrumb() {
 function showView(view) {
   dom.hero.style.display = view === 'home' ? 'block' : 'none';
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
-  dom.posting.style.display = view === 'post' ? 'block' : 'none';
 
   dom.dockItems.forEach(item => item.classList.remove('active'));
   document.getElementById(`dock-${view === 'explorer' ? 'files' : view}`).classList.add('active');
@@ -517,7 +508,7 @@ document.getElementById('dock-files').onclick = () => {
 document.getElementById('dock-post').onclick = () => {
   if (state.isLoggedIn || !state.password) {
     showView('post');
-    loadDrafts();
+    loadDraftsAndPosted();
   } else {
     showModal('login-modal');
   }
@@ -599,105 +590,6 @@ dom.btnXPost.onclick = async () => {
   }
 };
 
-// --- Posting Logic ---
-async function loadDrafts() {
-  dom.draftList.innerHTML = '<p style="color: var(--text-dim)">ドラフトを検索中...</p>';
-  dom.postedList.innerHTML = '<p style="color: var(--text-dim)">読み込み中...</p>';
-  
-  try {
-    const fetchDir = async (dir) => {
-      try {
-        const items = await githubFetch(dir);
-        let files = [];
-        for (const item of items) {
-          if (item.type === 'dir') {
-            const subItems = await githubFetch(item.path);
-            files = files.concat(subItems.filter(f => f.name.endsWith('.md')));
-          } else if (item.name.endsWith('.md')) {
-            files.push(item);
-          }
-        }
-        return files;
-      } catch (e) { return []; }
-    };
-
-    const drafts = await fetchDir('artisans/x-poster/drafts');
-    const posted = await fetchDir('artisans/x-poster/posted');
-
-    renderPostingList(drafts, dom.draftList, true);
-    renderPostingList(posted, dom.postedList, false);
-  } catch (err) {
-    dom.draftList.innerHTML = `<p style="color: #ef4444">エラー: ${err.message}</p>`;
-  }
-}
-
-function renderPostingList(files, container, isDraft) {
-  if (files.length === 0) {
-    container.innerHTML = `<p style="color: var(--text-dim)">見つかりませんでした。</p>`;
-    return;
-  }
-
-  container.innerHTML = '';
-  files.forEach(file => {
-    const fileId = `file-${file.sha}`;
-    const dateStr = extractDateFromPath(file.path);
-    
-    // Fallback title: parent folder name (e.g. 20260313_mirofish_spx_ai)
-    const folderName = file.path.split('/').slice(-2, -1)[0] || file.name;
-
-    const div = document.createElement('div');
-    div.className = 'draft-item';
-    if (!isDraft) div.classList.add('posted-item');
-
-    div.innerHTML = `
-      <div class="draft-info" id="${fileId}">
-        <div class="draft-icon-area"></div>
-        <div class="draft-name">
-          <span class="title-text">${folderName}</span>
-          <span class="draft-date">${dateStr}</span>
-        </div>
-      </div>
-      <div class="row-actions">
-        ${isDraft ? `
-          <button class="row-btn post-btn" title="投稿">🚀</button>
-          <button class="row-btn move-btn" title="完了">📦</button>
-          <button class="row-btn delete-btn" title="削除">🗑️</button>
-        ` : `
-          <div class="posted-badge">配信済み</div>
-        `}
-      </div>
-    `;
-
-    // Row-wide click listener for info area
-    const infoEl = div.querySelector('.draft-info');
-    infoEl.onclick = (e) => {
-      e.stopPropagation();
-      openContentPreview(file);
-    };
-
-    if (isDraft) {
-      div.querySelector('.post-btn').onclick = (e) => {
-        e.stopPropagation();
-        state.currentFile = file; // Set context
-        executePosting(false); // Rocket 🚀 = Real Post
-      };
-      div.querySelector('.move-btn').onclick = (e) => {
-        e.stopPropagation();
-        moveToPosted(file);
-      };
-      div.querySelector('.delete-btn').onclick = (e) => {
-        e.stopPropagation();
-        deleteDraftFolder(file);
-      };
-    } else {
-      div.onclick = () => openContentPreview(file);
-    }
-
-    container.appendChild(div);
-    fetchAndSetTitle(file, fileId);
-  });
-}
-
 async function openContentPreview(file) {
   previewFile(file);
 }
@@ -771,7 +663,7 @@ async function moveToPosted(file) {
     const data = await res.json();
     if (res.ok) {
       alert(`${folderName} を投稿済みに移動しました。`);
-      loadDrafts(); // UIを再読み込み
+      loadDraftsAndPosted(); // UIを再読み込み
     } else {
       alert('移動に失敗しました: ' + data.details);
     }
@@ -805,7 +697,7 @@ async function deleteDraftFolder(file) {
     const data = await res.json();
     if (res.ok) {
       alert(`${folderName} を削除しました。`);
-      loadDrafts();
+      loadDraftsAndPosted();
     } else {
       alert('削除に失敗しました: ' + (data.details || data.error));
     }
@@ -834,7 +726,7 @@ async function deleteFile(file) {
     const data = await res.json();
     if (res.ok) {
       alert(`${file.name} を削除しました。`);
-      loadDrafts();
+      loadDraftsAndPosted();
     } else {
       alert('削除に失敗しました: ' + (data.details || data.error));
     }
@@ -844,26 +736,6 @@ async function deleteFile(file) {
     dom.loading.style.display = 'none';
   }
 }
-
-async function openDraftEditor(file) {
-  state.currentFile = file;
-  dom.postFilename.innerText = file.name;
-  dom.postEditor.value = '読み込み中...';
-  dom.postOverlay.style.display = 'flex';
-
-  try {
-    const data = await githubFetch(file.path);
-    if (data.content) {
-      dom.postEditor.value = decodeBase64(data.content);
-    }
-  } catch (err) {
-    dom.postEditor.value = '読み込みに失敗しました: ' + err.message;
-  }
-}
-
-document.getElementById('close-posting-preview').onclick = () => {
-  dom.postOverlay.style.display = 'none';
-};
 
 async function executePosting(dryRun) {
   if (!state.currentFile || !state.currentFile.path) return;
@@ -908,9 +780,6 @@ async function executePosting(dryRun) {
     dom.loading.style.display = 'none';
   }
 }
-
-document.getElementById('btn-final-post').onclick = () => executePosting(false);
-document.getElementById('btn-dry-post').onclick = () => executePosting(true);
 
 // Expose functions to global scope for onclick handlers
 window.executePostingForItem = executePostingForItem;
