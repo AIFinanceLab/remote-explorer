@@ -505,14 +505,6 @@ document.getElementById('dock-files').onclick = () => {
     showModal('login-modal');
   }
 };
-document.getElementById('dock-post').onclick = () => {
-  if (state.isLoggedIn || !state.password) {
-    showView('post');
-    loadDraftsAndPosted();
-  } else {
-    showModal('login-modal');
-  }
-};
 document.getElementById('dock-settings').onclick = () => {
   dom.inputToken.value = state.token;
   dom.inputRepo.value = state.repo;
