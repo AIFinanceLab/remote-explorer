@@ -150,6 +150,21 @@ body {
   font-size: 0.85rem;
 }
 
+.folder-section-header {
+  padding: 8px 12px;
+  margin: 8px 0 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.folder-section-header.posted {
+  color: var(--text-dim);
+  margin-top: 16px;
+}
+
 .file-list {
   list-style: none;
   padding: 1rem;

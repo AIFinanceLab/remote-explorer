@@ -45,8 +45,7 @@ function init() {
   } else if (state.token && state.repo) {
     state.isLoggedIn = true;
     showView('explorer');
-    setDefaultBreadcrumb();
-    loadRoot();
+    loadDraftsAndPosted();
   }
 }
 
@@ -64,12 +63,54 @@ function setDefaultBreadcrumb() {
   };
   // Re-attach drafts click handler
   dom.breadcrumb.querySelector('#drafts-btn').onclick = async () => {
-    const data = await githubFetch('artisans/x-poster/drafts');
-    if (data) {
-      setDraftsBreadcrumb();
-      renderDraftsTree(data, dom.fileList);
-    }
+    await loadDraftsAndPosted();
   };
+}
+
+async function loadDraftsAndPosted() {
+  setDraftsBreadcrumb();
+  dom.fileList.innerHTML = '<p style="color: var(--text-dim)">読み込み中...</p>';
+
+  try {
+    const [draftsData, postedData] = await Promise.all([
+      githubFetch('artisans/x-poster/drafts'),
+      githubFetch('artisans/x-poster/posted')
+    ]);
+
+    dom.fileList.innerHTML = '';
+
+    // Drafts section
+    const draftsHeader = document.createElement('div');
+    draftsHeader.className = 'folder-section-header';
+    draftsHeader.innerHTML = '📝 ドラフト（未投稿）';
+    dom.fileList.appendChild(draftsHeader);
+
+    if (draftsData && draftsData.length > 0) {
+      renderDraftsTree(draftsData, dom.fileList);
+    } else {
+      const empty = document.createElement('p');
+      empty.style.color = 'var(--text-dim)';
+      empty.textContent = 'ドラフトはありません';
+      dom.fileList.appendChild(empty);
+    }
+
+    // Posted section
+    const postedHeader = document.createElement('div');
+    postedHeader.className = 'folder-section-header posted';
+    postedHeader.innerHTML = '📋 投稿済み';
+    dom.fileList.appendChild(postedHeader);
+
+    if (postedData && postedData.length > 0) {
+      renderDraftsTree(postedData, dom.fileList);
+    } else {
+      const empty = document.createElement('p');
+      empty.style.color = 'var(--text-dim)';
+      empty.textContent = '投稿済みはありません';
+      dom.fileList.appendChild(empty);
+    }
+  } catch (err) {
+    dom.fileList.innerHTML = `<p style="color: #ef4444">エラー: ${err.message}</p>`;
+  }
 }
 
 function setDraftsBreadcrumb() {
