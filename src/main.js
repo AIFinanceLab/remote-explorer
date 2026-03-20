@@ -47,6 +47,29 @@ function init() {
     showView('explorer');
     loadRoot();
   }
+
+  // Drafts shortcut button
+  const draftsBtn = document.getElementById('drafts-btn');
+  if (draftsBtn) {
+    draftsBtn.style.cursor = 'pointer';
+    draftsBtn.onclick = async () => {
+      const data = await githubFetch('artisans/x-poster/drafts');
+      if (data) {
+        // Update breadcrumb
+        dom.breadcrumb.innerHTML = `
+          <span data-path="" style="cursor:pointer">root</span>
+          <span style="color: var(--text-dim); margin: 0 4px;">/</span>
+          <span data-path="artisans/x-poster/drafts" class="shortcut-btn" id="drafts-btn" title="ドラフトフォルダへジャンプ">📝 Drafts</span>
+        `;
+        // Re-attach click handler for root
+        dom.breadcrumb.querySelector('[data-path=""]').onclick = () => {
+          loadRoot();
+          dom.breadcrumb.innerHTML = '<span data-path="">root</span>';
+        };
+        renderTree(data, dom.fileList);
+      }
+    };
+  }
 }
 
 // --- Navigation & Views ---

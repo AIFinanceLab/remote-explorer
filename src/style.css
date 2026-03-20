@@ -87,6 +87,19 @@ body {
   color: #fff;
 }
 
+.shortcut-btn {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.shortcut-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
 .file-list {
   list-style: none;
   padding: 1rem;
