@@ -86,7 +86,7 @@ async function loadDraftsAndPosted() {
     dom.fileList.appendChild(draftsHeader);
 
     if (draftsData && draftsData.length > 0) {
-      renderDraftsTree(draftsData, dom.fileList);
+      renderDraftsTree(draftsData, dom.fileList, 'draft');
     } else {
       const empty = document.createElement('p');
       empty.style.color = 'var(--text-dim)';
@@ -101,7 +101,7 @@ async function loadDraftsAndPosted() {
     dom.fileList.appendChild(postedHeader);
 
     if (postedData && postedData.length > 0) {
-      renderDraftsTree(postedData, dom.fileList);
+      renderDraftsTree(postedData, dom.fileList, 'posted');
     } else {
       const empty = document.createElement('p');
       empty.style.color = 'var(--text-dim)';
@@ -240,7 +240,7 @@ function renderTree(items, container) {
   });
 }
 
-function renderDraftsTree(items, container) {
+function renderDraftsTree(items, container, type = 'draft') {
   container.innerHTML = '';
 
   // Sort: Directories first
@@ -252,7 +252,7 @@ function renderDraftsTree(items, container) {
 
     // Item container
     const itemEl = document.createElement('div');
-    itemEl.className = 'file-item draft-item';
+    itemEl.className = `file-item draft-item ${type === 'posted' ? 'posted-folder' : 'draft-folder'}`;
 
     const arrow = isDir ? '<span class="folder-arrow">▶</span>' : '<span class="folder-arrow"></span>';
     

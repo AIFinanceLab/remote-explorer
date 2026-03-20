@@ -165,6 +165,19 @@ body {
   margin-top: 16px;
 }
 
+.draft-folder {
+  border-left: 3px solid rgba(59, 130, 246, 0.5);
+  padding-left: 8px;
+  margin-left: -8px;
+}
+
+.posted-folder {
+  border-left: 3px solid rgba(16, 185, 129, 0.5);
+  padding-left: 8px;
+  margin-left: -8px;
+  opacity: 0.7;
+}
+
 .file-list {
   list-style: none;
   padding: 1rem;
