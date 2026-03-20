@@ -6,7 +6,7 @@ let state = {
   isLoggedIn: false,
   currentPath: '',
   currentObjectURL: null,
-  serverUrl: localStorage.getItem('re_server_url') || 'https://paste-pure-indices-optional.trycloudflare.com',
+  serverUrl: localStorage.getItem('re_server_url') || 'https://unstupefied-jesica-unsimplified.ngrok-free.dev',
   currentFile: null
 };
 
