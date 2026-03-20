@@ -77,8 +77,12 @@ async function loadDraftsAndPosted() {
     draftsHeader.innerHTML = '📝 ドラフト（未投稿）';
     dom.fileList.appendChild(draftsHeader);
 
+    const draftsList = document.createElement('ul');
+    draftsList.className = 'file-list';
+    dom.fileList.appendChild(draftsList);
+
     if (draftsData && draftsData.length > 0) {
-      renderDraftsTree(draftsData, dom.fileList, 'draft');
+      renderDraftsTree(draftsData, draftsList, 'draft');
     } else {
       const empty = document.createElement('p');
       empty.style.color = 'var(--text-dim)';
@@ -92,8 +96,12 @@ async function loadDraftsAndPosted() {
     postedHeader.innerHTML = '📋 投稿済み';
     dom.fileList.appendChild(postedHeader);
 
+    const postedList = document.createElement('ul');
+    postedList.className = 'file-list';
+    dom.fileList.appendChild(postedList);
+
     if (postedData && postedData.length > 0) {
-      renderDraftsTree(postedData, dom.fileList, 'posted');
+      renderDraftsTree(postedData, postedList, 'posted');
     } else {
       const empty = document.createElement('p');
       empty.style.color = 'var(--text-dim)';
