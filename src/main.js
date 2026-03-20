@@ -134,7 +134,7 @@ async function githubFetch(path) {
 
 async function loadRoot() {
   const data = await githubFetch('');
-  renderDraftsTree(data, dom.fileList);
+  renderTree(data, dom.fileList);
 }
 
 function renderTree(items, container) {
