@@ -225,20 +225,21 @@ function renderDraftsTree(items, container) {
       }
     }
 
-    // Action buttons for draft items
-    const actionBtns = `
+    // Action buttons for draft items (skip temp folder)
+    const isTemp = item.name === 'temp';
+    const actionBtns = isDir && !isTemp ? `
       <span class="draft-item-actions">
         <button class="action-btn post-btn" title="投稿" onclick="event.stopPropagation(); executePostingForItem('${item.path}')">🚀</button>
-        <button class="action-btn posted-btn" title="ポスト済み" onclick="event.stopPropagation(); moveToPosted({path:'${item.path}',name:'${item.name}'})">📋</button>
-        <button class="action-btn delete-btn" title="削除" onclick="event.stopPropagation(); deleteFile({path:'${item.path}',name:'${item.name}'})">🗑️</button>
+        <button class="action-btn posted-btn" title="ポスト済み" onclick="event.stopPropagation(); moveToPostedFolder('${item.path}','${item.name}')">📋</button>
+        <button class="action-btn delete-btn" title="削除" onclick="event.stopPropagation(); deleteFolder('${item.path}','${item.name}')">🗑️</button>
       </span>
-    `;
+    ` : '';
 
     itemEl.innerHTML = `
       ${arrow}
       <span class="icon">${icon}</span>
       <span class="name">${item.name}</span>
-      ${isDir ? actionBtns : ''}
+      ${actionBtns}
     `;
 
     li.appendChild(itemEl);
@@ -271,8 +272,51 @@ function renderDraftsTree(items, container) {
   });
 }
 
-// Post a single draft item
-async function executePostingForItem(path) {
+// Post a draft folder via AppleScript
+async function executePostingForItem(folderPath) {
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+  }
+
+  // Find the first .md file in the folder to post
+  let mdPath = folderPath;
+  if (!folderPath.endsWith('.md')) {
+    try {
+      const items = await githubFetch(folderPath);
+      const mdItem = items.find(i => i.name.endsWith('.md'));
+      if (mdItem) mdPath = mdItem.path;
+    } catch (e) {
+      console.warn('Could not find md file in folder:', e);
+    }
+  }
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: mdPath, dryRun: false })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('投稿を開始しました（AppleScript）。完了までしばらくお待ちください。');
+    } else {
+      alert('投稿に失敗しました: ' + (data.details || data.error));
+    }
+  } catch (e) {
+    alert('サーバーに接続できません: ' + e.message);
+  } finally {
+    dom.loading.style.display = 'none';
+  }
+}
+
+// Move draft folder to posted
+async function moveToPostedFolder(folderPath, folderName) {
+  if (!confirm(`「${folderName}」を投稿済みフォルダへ移動しますか？`)) return;
+
   let url = state.serverUrl;
   if (!url) {
     url = prompt('Backend Server URL:', state.serverUrl);
@@ -282,19 +326,51 @@ async function executePostingForItem(path) {
 
   dom.loading.style.display = 'block';
   try {
-    const res = await fetch(`${url}/api/x-post`, {
+    const res = await fetch(`${url}/api/x-move-to-posted`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, dryRun: false })
+      body: JSON.stringify({ path: folderPath })
     });
     const data = await res.json();
     if (res.ok) {
-      alert('投稿しました。');
-      // Reload drafts
+      alert('移動しました。');
       const draftsData = await githubFetch('artisans/x-poster/drafts');
       if (draftsData) renderDraftsTree(draftsData, dom.fileList);
     } else {
-      alert('投稿に失敗しました: ' + (data.details || data.error));
+      alert('移動に失敗しました: ' + (data.details || data.error));
+    }
+  } catch (e) {
+    alert('サーバーに接続できません: ' + e.message);
+  } finally {
+    dom.loading.style.display = 'none';
+  }
+}
+
+// Delete draft folder
+async function deleteFolder(folderPath, folderName) {
+  if (!confirm(`「${folderName}」を削除しますか？`)) return;
+
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+  }
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: folderPath })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`${folderName} を削除しました。`);
+      const draftsData = await githubFetch('artisans/x-poster/drafts');
+      if (draftsData) renderDraftsTree(draftsData, dom.fileList);
+    } else {
+      alert('削除に失敗しました: ' + (data.details || data.error));
     }
   } catch (e) {
     alert('サーバーに接続できません: ' + e.message);
