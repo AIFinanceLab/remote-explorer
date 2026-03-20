@@ -67,7 +67,7 @@ function setDefaultBreadcrumb() {
     const data = await githubFetch('artisans/x-poster/drafts');
     if (data) {
       setDraftsBreadcrumb();
-      renderTree(data, dom.fileList);
+      renderDraftsTree(data, dom.fileList);
     }
   };
 }
@@ -77,11 +77,6 @@ function setDraftsBreadcrumb() {
     <span data-path="" style="cursor:pointer">root</span>
     <span style="color: var(--text-dim); margin: 0 4px;">/</span>
     <span data-path="artisans/x-poster/drafts" class="shortcut-btn" id="drafts-btn" title="ドラフトフォルダへジャンプ">📝 Drafts</span>
-    <span class="draft-actions">
-      <button class="action-btn post-btn" id="btn-header-post" title="全ドラフトを投稿">🚀 投稿</button>
-      <button class="action-btn posted-btn" id="btn-header-posted" title="ポスト済みを表示">📋 ポスト済み</button>
-      <button class="action-btn delete-btn" id="btn-header-delete" title="選択ドラフトを削除">🗑️ デリート</button>
-    </span>
   `;
   // Re-attach click handler for root
   dom.breadcrumb.querySelector('[data-path=""]').onclick = () => {
@@ -93,25 +88,8 @@ function setDraftsBreadcrumb() {
     const data = await githubFetch('artisans/x-poster/drafts');
     if (data) {
       setDraftsBreadcrumb();
-      renderTree(data, dom.fileList);
+      renderDraftsTree(data, dom.fileList);
     }
-  };
-  // Header post button
-  dom.breadcrumb.querySelector('#btn-header-post').onclick = () => executePosting(false);
-  // Header posted button
-  dom.breadcrumb.querySelector('#btn-header-posted').onclick = () => showView('post');
-  // Header delete button
-  dom.breadcrumb.querySelector('#btn-header-delete').onclick = () => {
-    const checked = document.querySelectorAll('.draft-check:checked');
-    if (checked.length === 0) {
-      alert('削除するドラフトを選択してください');
-      return;
-    }
-    if (!confirm(`${checked.length}件のドラフトを削除しますか？`)) return;
-    checked.forEach(el => {
-      const file = JSON.parse(el.dataset.file);
-      deleteFile(file);
-    });
   };
 }
 
@@ -219,6 +197,110 @@ function renderTree(items, container) {
 
     container.appendChild(li);
   });
+}
+
+function renderDraftsTree(items, container) {
+  container.innerHTML = '';
+
+  // Sort: Directories first
+  items.sort((a, b) => (b.type === 'dir' ? 1 : -1) - (a.type === 'dir' ? 1 : -1));
+
+  items.forEach(item => {
+    const li = document.createElement('li');
+    const isDir = item.type === 'dir';
+
+    // Item container
+    const itemEl = document.createElement('div');
+    itemEl.className = 'file-item draft-item';
+
+    const arrow = isDir ? '<span class="folder-arrow">▶</span>' : '<span class="folder-arrow"></span>';
+    
+    let icon = isDir ? '📁' : '📄';
+    if (!isDir) {
+      const ext = item.name.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) {
+        icon = '🖼️';
+      } else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+        icon = '🎬';
+      }
+    }
+
+    // Action buttons for draft items
+    const actionBtns = `
+      <span class="draft-item-actions">
+        <button class="action-btn post-btn" title="投稿" onclick="event.stopPropagation(); executePostingForItem('${item.path}')">🚀</button>
+        <button class="action-btn posted-btn" title="ポスト済み" onclick="event.stopPropagation(); moveToPosted({path:'${item.path}',name:'${item.name}'})">📋</button>
+        <button class="action-btn delete-btn" title="削除" onclick="event.stopPropagation(); deleteFile({path:'${item.path}',name:'${item.name}'})">🗑️</button>
+      </span>
+    `;
+
+    itemEl.innerHTML = `
+      ${arrow}
+      <span class="icon">${icon}</span>
+      <span class="name">${item.name}</span>
+      ${isDir ? actionBtns : ''}
+    `;
+
+    li.appendChild(itemEl);
+
+    if (isDir) {
+      // Create nested list for children
+      const nextUl = document.createElement('ul');
+      nextUl.className = 'nested-list';
+      li.appendChild(nextUl);
+
+      itemEl.onclick = async (e) => {
+        e.stopPropagation();
+        const isExpanded = itemEl.classList.toggle('expanded');
+        nextUl.style.display = isExpanded ? 'block' : 'none';
+
+        // Load children if not already loaded
+        if (isExpanded && nextUl.children.length === 0) {
+          const children = await githubFetch(item.path);
+          renderDraftsTree(children, nextUl);
+        }
+      };
+    } else {
+      itemEl.onclick = (e) => {
+        e.stopPropagation();
+        previewFile(item);
+      };
+    }
+
+    container.appendChild(li);
+  });
+}
+
+// Post a single draft item
+async function executePostingForItem(path) {
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+  }
+
+  dom.loading.style.display = 'block';
+  try {
+    const res = await fetch(`${url}/api/x-post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, dryRun: false })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('投稿しました。');
+      // Reload drafts
+      const draftsData = await githubFetch('artisans/x-poster/drafts');
+      if (draftsData) renderDraftsTree(draftsData, dom.fileList);
+    } else {
+      alert('投稿に失敗しました: ' + (data.details || data.error));
+    }
+  } catch (e) {
+    alert('サーバーに接続できません: ' + e.message);
+  } finally {
+    dom.loading.style.display = 'none';
+  }
 }
 
 // --- Preview Logic ---
