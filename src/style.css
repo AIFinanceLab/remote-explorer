@@ -263,6 +263,7 @@ body {
   z-index: 3000;
   display: none;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .preview-header {
@@ -300,6 +301,9 @@ body {
   margin: 0;
   width: 100%;
   padding: 1rem 1.5rem;
+  box-sizing: border-box;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 #preview-body img,
