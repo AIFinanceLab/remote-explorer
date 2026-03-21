@@ -139,7 +139,7 @@ function showView(view) {
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
 
   dom.dockItems.forEach(item => item.classList.remove('active'));
-  document.getElementById(`dock-${view === 'explorer' ? 'files' : view}`).classList.add('active');
+  document.getElementById(`dock-${view === 'settings' ? 'settings' : 'files'}`).classList.add('active');
 }
 
 function showModal(id) {
@@ -502,7 +502,6 @@ function decodeBase64(str) {
 }
 
 // --- Event Listeners ---
-document.getElementById('dock-home').onclick = () => showView('home');
 document.getElementById('dock-files').onclick = () => {
   if (state.isLoggedIn || !state.password) {
     showView('explorer');
