@@ -374,8 +374,7 @@ async function moveToPostedFolder(folderPath, folderName) {
     const data = await res.json();
     if (res.ok) {
       alert('移動しました。');
-      const draftsData = await githubFetch('artisans/x-poster/drafts');
-      if (draftsData) renderDraftsTree(draftsData, dom.fileList);
+      loadDraftsAndPosted();
     } else {
       alert('移動に失敗しました: ' + (data.details || data.error));
     }
@@ -407,8 +406,7 @@ async function deleteFolder(folderPath, folderName) {
     const data = await res.json();
     if (res.ok) {
       alert(`${folderName} を削除しました。`);
-      const draftsData = await githubFetch('artisans/x-poster/drafts');
-      if (draftsData) renderDraftsTree(draftsData, dom.fileList);
+      loadDraftsAndPosted();
     } else {
       alert('削除に失敗しました: ' + (data.details || data.error));
     }
