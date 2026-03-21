@@ -326,7 +326,7 @@ async function executePostingForItem(folderPath) {
   if (!folderPath.endsWith('.md')) {
     try {
       const items = await githubFetch(folderPath);
-      const mdItem = items.find(i => i.name.endsWith('.md'));
+      const mdItem = items.find(i => i.name === 'post.md') || items.find(i => i.name.endsWith('.md'));
       if (mdItem) mdPath = mdItem.path;
     } catch (e) {
       console.warn('Could not find md file in folder:', e);
