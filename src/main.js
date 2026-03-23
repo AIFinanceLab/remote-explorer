@@ -6,7 +6,7 @@ let state = {
   isLoggedIn: false,
   currentPath: '',
   currentObjectURL: null,
-  serverUrl: localStorage.getItem('re_server_url') || 'https://macbook-air.taild4f7f4.ts.net',
+  serverUrl: localStorage.getItem('re_server_url') || 'http://macbook-air.taild4f7f4.ts.net:3001',
   currentFile: null
 };
 
@@ -28,6 +28,7 @@ const dom = {
   inputLoginPassword: document.getElementById('input-login-password'),
   inputServerUrl: document.getElementById('input-server-url'),
   btnXPost: document.getElementById('btn-x-post'),
+  btnMovePosted: document.getElementById('btn-move-posted')
 };
 
 // --- Initialization ---
@@ -37,109 +38,17 @@ function init() {
   } else if (state.token && state.repo) {
     state.isLoggedIn = true;
     showView('explorer');
-    loadDraftsAndPosted();
+    loadRoot();
   }
 }
 
 // --- Navigation & Views ---
-function setDefaultBreadcrumb() {
-  dom.breadcrumb.innerHTML = `
-    <span data-path="" style="cursor:pointer">root</span>
-    <span style="color: var(--text-dim); margin: 0 4px;">/</span>
-    <span data-path="artisans/x-poster/drafts" class="shortcut-btn" id="drafts-btn" title="ドラフトフォルダへジャンプ">📝 Drafts</span>
-  `;
-  // Re-attach click handler for root
-  dom.breadcrumb.querySelector('[data-path=""]').onclick = () => {
-    loadRoot();
-    setDefaultBreadcrumb();
-  };
-  // Re-attach drafts click handler
-  dom.breadcrumb.querySelector('#drafts-btn').onclick = async () => {
-    await loadDraftsAndPosted();
-  };
-}
-
-async function loadDraftsAndPosted() {
-  setDraftsBreadcrumb();
-  dom.fileList.innerHTML = '<p style="color: var(--text-dim)">読み込み中...</p>';
-
-  try {
-    const [draftsData, postedData] = await Promise.all([
-      githubFetch('artisans/x-poster/drafts'),
-      githubFetch('artisans/x-poster/posted')
-    ]);
-
-    dom.fileList.innerHTML = '';
-
-    // Drafts section
-    const draftsHeader = document.createElement('div');
-    draftsHeader.className = 'folder-section-header';
-    draftsHeader.innerHTML = '📝 ドラフト（未投稿）';
-    dom.fileList.appendChild(draftsHeader);
-
-    const draftsList = document.createElement('ul');
-    draftsList.className = 'file-list';
-    dom.fileList.appendChild(draftsList);
-
-    if (draftsData && draftsData.length > 0) {
-      renderDraftsTree(draftsData, draftsList, 'draft');
-    } else {
-      const empty = document.createElement('p');
-      empty.style.color = 'var(--text-dim)';
-      empty.textContent = 'ドラフトはありません';
-      dom.fileList.appendChild(empty);
-    }
-
-    // Posted section
-    const postedHeader = document.createElement('div');
-    postedHeader.className = 'folder-section-header posted';
-    postedHeader.innerHTML = '📋 投稿済み';
-    dom.fileList.appendChild(postedHeader);
-
-    const postedList = document.createElement('ul');
-    postedList.className = 'file-list';
-    dom.fileList.appendChild(postedList);
-
-    if (postedData && postedData.length > 0) {
-      renderDraftsTree(postedData, postedList, 'posted');
-    } else {
-      const empty = document.createElement('p');
-      empty.style.color = 'var(--text-dim)';
-      empty.textContent = '投稿済みはありません';
-      dom.fileList.appendChild(empty);
-    }
-  } catch (err) {
-    dom.fileList.innerHTML = `<p style="color: #ef4444">エラー: ${err.message}</p>`;
-  }
-}
-
-function setDraftsBreadcrumb() {
-  dom.breadcrumb.innerHTML = `
-    <span data-path="" style="cursor:pointer">root</span>
-    <span style="color: var(--text-dim); margin: 0 4px;">/</span>
-    <span data-path="artisans/x-poster/drafts" class="shortcut-btn" id="drafts-btn" title="ドラフトフォルダへジャンプ">📝 Drafts</span>
-  `;
-  // Re-attach click handler for root
-  dom.breadcrumb.querySelector('[data-path=""]').onclick = () => {
-    loadRoot();
-    setDefaultBreadcrumb();
-  };
-  // Re-attach drafts click handler
-  dom.breadcrumb.querySelector('#drafts-btn').onclick = async () => {
-    const data = await githubFetch('artisans/x-poster/drafts');
-    if (data) {
-      setDraftsBreadcrumb();
-      renderDraftsTree(data, dom.fileList);
-    }
-  };
-}
-
 function showView(view) {
   dom.hero.style.display = view === 'home' ? 'block' : 'none';
   dom.explorer.style.display = view === 'explorer' ? 'block' : 'none';
 
   dom.dockItems.forEach(item => item.classList.remove('active'));
-  document.getElementById(`dock-${view === 'settings' ? 'settings' : 'files'}`).classList.add('active');
+  document.getElementById(`dock-${view === 'explorer' ? 'files' : view}`).classList.add('active');
 }
 
 function showModal(id) {
@@ -161,7 +70,8 @@ async function githubFetch(path) {
     const response = await fetch(url, {
       headers: {
         'Authorization': `token ${state.token}`,
-        'Accept': 'application/vnd.github.v3+json'
+        'Accept': 'application/vnd.github.v3+json',
+        
       }
     });
 
@@ -177,11 +87,14 @@ async function loadRoot() {
   renderTree(data, dom.fileList);
 }
 
-function renderTree(items, container) {
+function renderTree(items, container, currentPath = '') {
   container.innerHTML = '';
 
   // Sort: Directories first
   items.sort((a, b) => (b.type === 'dir' ? 1 : -1) - (a.type === 'dir' ? 1 : -1));
+
+  const isDraftsFolder = currentPath.includes('artisans/x-poster/drafts');
+  const isPostedFolder = currentPath.includes('artisans/x-poster/posted');
 
   items.forEach(item => {
     const li = document.createElement('li');
@@ -203,83 +116,30 @@ function renderTree(items, container) {
       }
     }
 
-    itemEl.innerHTML = `
-      ${arrow}
-      <span class="icon">${icon}</span>
-      <span class="name">${item.name}</span>
-    `;
-
-    li.appendChild(itemEl);
-
-    if (isDir) {
-      // Create nested list for children
-      const nextUl = document.createElement('ul');
-      nextUl.className = 'nested-list';
-      li.appendChild(nextUl);
-
-      itemEl.onclick = async (e) => {
-        e.stopPropagation();
-        const isExpanded = itemEl.classList.toggle('expanded');
-        nextUl.style.display = isExpanded ? 'block' : 'none';
-
-        // Load children if not already loaded
-        if (isExpanded && nextUl.children.length === 0) {
-          const children = await githubFetch(item.path);
-          renderTree(children, nextUl);
-        }
-      };
-    } else {
-      itemEl.onclick = (e) => {
-        e.stopPropagation();
-        previewFile(item);
-      };
-    }
-
-    container.appendChild(li);
-  });
-}
-
-function renderDraftsTree(items, container, type = 'draft') {
-  container.innerHTML = '';
-
-  // Sort: Directories first
-  items.sort((a, b) => (b.type === 'dir' ? 1 : -1) - (a.type === 'dir' ? 1 : -1));
-
-  items.forEach(item => {
-    const li = document.createElement('li');
-    const isDir = item.type === 'dir';
-
-    // Item container
-    const itemEl = document.createElement('div');
-    itemEl.className = `file-item draft-item ${type === 'posted' ? 'posted-folder' : 'draft-folder'}`;
-
-    const arrow = isDir ? '<span class="folder-arrow">▶</span>' : '<span class="folder-arrow"></span>';
-    
-    let icon = isDir ? '📁' : '📄';
-    if (!isDir) {
-      const ext = item.name.split('.').pop().toLowerCase();
-      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) {
-        icon = '🖼️';
-      } else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
-        icon = '🎬';
+    // Action buttons for drafts folder
+    let actionsHtml = '';
+    if (!isDir && item.name.endsWith('.md')) {
+      if (isDraftsFolder) {
+        actionsHtml = `
+          <div class="row-actions">
+            <button class="row-btn post-btn" title="投稿">🚀</button>
+            <button class="row-btn move-btn" title="完了">📦</button>
+          </div>
+        `;
+      } else if (isPostedFolder) {
+        actionsHtml = `
+          <div class="row-actions">
+            <div class="posted-badge">配信済み</div>
+          </div>
+        `;
       }
     }
 
-    // Action buttons for draft items (skip temp folder)
-    const isTemp = item.name === 'temp';
-    const actionBtns = isDir && !isTemp ? `
-      <span class="draft-item-actions">
-        <button class="action-btn post-btn" title="投稿" onclick="event.stopPropagation(); executePostingForItem('${item.path}')">🚀</button>
-        <button class="action-btn posted-btn" title="ポスト済み" onclick="event.stopPropagation(); moveToPostedFolder('${item.path}','${item.name}')">📋</button>
-        <button class="action-btn delete-btn" title="削除" onclick="event.stopPropagation(); deleteFolder('${item.path}','${item.name}')">🗑️</button>
-      </span>
-    ` : '';
-
     itemEl.innerHTML = `
       ${arrow}
       <span class="icon">${icon}</span>
       <span class="name">${item.name}</span>
-      ${actionBtns}
+      ${actionsHtml}
     `;
 
     li.appendChild(itemEl);
@@ -298,7 +158,7 @@ function renderDraftsTree(items, container, type = 'draft') {
         // Load children if not already loaded
         if (isExpanded && nextUl.children.length === 0) {
           const children = await githubFetch(item.path);
-          renderDraftsTree(children, nextUl);
+          renderTree(children, nextUl, item.path);
         }
       };
     } else {
@@ -308,113 +168,21 @@ function renderDraftsTree(items, container, type = 'draft') {
       };
     }
 
+    // Attach action handlers for draft files
+    if (!isDir && isDraftsFolder && item.name.endsWith('.md')) {
+      li.querySelector('.post-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.currentFile = item;
+        executePosting(false);
+      });
+      li.querySelector('.move-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveToPosted(item);
+      });
+    }
+
     container.appendChild(li);
   });
-}
-
-// Post a draft folder via AppleScript
-async function executePostingForItem(folderPath) {
-  let url = state.serverUrl;
-  if (!url) {
-    url = prompt('Backend Server URL:', state.serverUrl);
-    if (!url) return;
-    state.serverUrl = url;
-  }
-
-  // Find the first .md file in the folder to post
-  let mdPath = folderPath;
-  if (!folderPath.endsWith('.md')) {
-    try {
-      const items = await githubFetch(folderPath);
-      const mdItem = items.find(i => i.name === 'post.md') || items.find(i => i.name.endsWith('.md'));
-      if (mdItem) mdPath = mdItem.path;
-    } catch (e) {
-      console.warn('Could not find md file in folder:', e);
-    }
-  }
-
-  dom.loading.style.display = 'block';
-  try {
-    const res = await fetch(`${url}/api/x-post`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: mdPath, dryRun: false })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert('投稿を開始しました（AppleScript）。完了までしばらくお待ちください。');
-    } else {
-      alert('投稿に失敗しました: ' + (data.details || data.error));
-    }
-  } catch (e) {
-    alert('サーバーに接続できません: ' + e.message);
-  } finally {
-    dom.loading.style.display = 'none';
-  }
-}
-
-// Move draft folder to posted
-async function moveToPostedFolder(folderPath, folderName) {
-  if (!confirm(`「${folderName}」を投稿済みフォルダへ移動しますか？`)) return;
-
-  let url = state.serverUrl;
-  if (!url) {
-    url = prompt('Backend Server URL:', state.serverUrl);
-    if (!url) return;
-    state.serverUrl = url;
-  }
-
-  dom.loading.style.display = 'block';
-  try {
-    const res = await fetch(`${url}/api/x-move-to-posted`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: folderPath })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert('移動しました。');
-      loadDraftsAndPosted();
-    } else {
-      alert('移動に失敗しました: ' + (data.details || data.error));
-    }
-  } catch (e) {
-    alert('サーバーに接続できません: ' + e.message);
-  } finally {
-    dom.loading.style.display = 'none';
-  }
-}
-
-// Delete draft folder
-async function deleteFolder(folderPath, folderName) {
-  if (!confirm(`「${folderName}」を削除しますか？`)) return;
-
-  let url = state.serverUrl;
-  if (!url) {
-    url = prompt('Backend Server URL:', state.serverUrl);
-    if (!url) return;
-    state.serverUrl = url;
-  }
-
-  dom.loading.style.display = 'block';
-  try {
-    const res = await fetch(`${url}/api/x-delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: folderPath })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(`${folderName} を削除しました。`);
-      loadDraftsAndPosted();
-    } else {
-      alert('削除に失敗しました: ' + (data.details || data.error));
-    }
-  } catch (e) {
-    alert('サーバーに接続できません: ' + e.message);
-  } finally {
-    dom.loading.style.display = 'none';
-  }
 }
 
 // --- Preview Logic ---
@@ -424,11 +192,25 @@ async function previewFile(file) {
   dom.previewBody.innerHTML = '<div style="color: var(--text-dim)">読み込み中...</div>';
   dom.previewOverlay.style.display = 'flex';
 
-  // Show X-Post button if markdown
-  if (file.name.endsWith('.md')) {
+  // Show appropriate action buttons based on folder location
+  const isDraft = file.path.includes('artisans/x-poster/drafts');
+  const isPosted = file.path.includes('artisans/x-poster/posted');
+  
+  if (file.name.endsWith('.md') && isDraft) {
+    dom.btnXPost.innerText = '🚀 投稿';
     dom.btnXPost.style.display = 'block';
+    dom.btnXPost.disabled = false;
+    dom.btnXPost.style.opacity = '1';
+    dom.btnMovePosted.style.display = 'block';
+  } else if (file.name.endsWith('.md') && isPosted) {
+    dom.btnXPost.innerText = '✅ 配信済み';
+    dom.btnXPost.style.display = 'block';
+    dom.btnXPost.disabled = true;
+    dom.btnXPost.style.opacity = '0.5';
+    dom.btnMovePosted.style.display = 'none';
   } else {
     dom.btnXPost.style.display = 'none';
+    dom.btnMovePosted.style.display = 'none';
   }
 
   // Cleanup old object URL
@@ -447,7 +229,8 @@ async function previewFile(file) {
       const response = await fetch(`https://api.github.com/repos/${state.repo}/contents/${file.path}`, {
         headers: {
           'Authorization': `token ${state.token}`,
-          'Accept': 'application/vnd.github.v3.raw' // Important: Get raw bytes
+          'Accept': 'application/vnd.github.v3.raw', // Important: Get raw bytes
+          
         }
       });
 
@@ -502,6 +285,7 @@ function decodeBase64(str) {
 }
 
 // --- Event Listeners ---
+document.getElementById('dock-home').onclick = () => showView('home');
 document.getElementById('dock-files').onclick = () => {
   if (state.isLoggedIn || !state.password) {
     showView('explorer');
@@ -575,7 +359,10 @@ dom.btnXPost.onclick = async () => {
   try {
     const res = await fetch(`${url}/api/x-post`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        
+      },
       body: JSON.stringify({ path: state.currentFile.path, dryRun })
     });
     const data = await res.json();
@@ -587,62 +374,47 @@ dom.btnXPost.onclick = async () => {
   }
 };
 
-async function openContentPreview(file) {
-  previewFile(file);
-}
+dom.btnMovePosted.onclick = async () => {
+  if (!state.currentFile || !state.currentFile.path) { alert('ファイルパスが不明です'); return; }
+  if (!window.confirm(`「${state.currentFile.name}」を投稿済みフォルダへ移動しますか？`)) return;
+  
+  let url = state.serverUrl;
+  if (!url) {
+    url = prompt('Backend Server URL:', state.serverUrl);
+    if (!url) return;
+    state.serverUrl = url;
+    localStorage.setItem('re_server_url', url);
+  }
 
-function extractDateFromPath(filePath) {
-  const match = filePath.match(/(\d{4})(\d{2})(\d{2})/);
-  if (match) return `${match[1]}/${match[2]}/${match[3]}`;
-  return '';
-}
-
-async function fetchAndSetTitle(file, domId) {
+  dom.loading.style.display = 'block';
   try {
-    const data = await githubFetch(file.path);
-    if (data.content) {
-      const content = decodeBase64(data.content);
-      
-      // Improved robust title extraction (YAML title: or # H1)
-      let title = '';
-      const fmMatch = content.match(/^\s*title:\s*(.*)$/m);
-      if (fmMatch) {
-        title = fmMatch[1].trim().replace(/^["']|["']$/g, '');
-      } else {
-        const h1Match = content.match(/^\s*#\s*(.*)$/m);
-        if (h1Match) title = h1Match[1].trim();
-      }
-
-      if (title) {
-        const infoEl = document.getElementById(domId);
-        if (infoEl) {
-          const textEl = infoEl.querySelector('.title-text');
-          if (textEl) textEl.innerText = title;
-          
-          // Media icon extraction logic
-          let icon = '📄';
-          const mediaSection = content.match(/^\s*media:\s*([\s\S]*?)(?=\n\w|---|^\s*$|$)/m);
-          if (mediaSection) {
-            const mediaValue = mediaSection[1];
-            if (mediaValue.match(/\.(mp4|mov|webm|avi|mkv)/i)) icon = '🎬';
-            else if (mediaValue.match(/\.(jpg|jpeg|png|gif|svg|webp)/i)) icon = '🖼️';
-          }
-          const iconArea = infoEl.querySelector('.draft-icon-area');
-          if (iconArea) iconArea.innerText = icon;
-        }
-      }
+    const res = await fetch(`${url}/api/x-move-to-posted`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        
+      },
+      body: JSON.stringify({ path: state.currentFile.path })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('移動しました。GitHub Actions による更新まで少し時間がかかる場合があります。');
+      dom.previewOverlay.style.display = 'none';
+      loadRoot();
+    } else {
+      alert('移動に失敗しました: ' + data.details);
     }
   } catch (e) {
-    console.warn('Metadata fetch failed for', file.path, e);
+    alert('サーバーに接続できません。');
+  } finally {
+    dom.loading.style.display = 'none';
   }
-}
+};
 
+// --- Move to Posted ---
 async function moveToPosted(file) {
-  // Get parent folder path (e.g. artisans/x-poster/drafts/20260316_soft_kill_system)
-  const folderPath = file.path.replace(/\/[^/]+$/, '');
-  const folderName = folderPath.split('/').pop();
-  if (!confirm(`「${folderName}」を投稿済みフォルダへ移動しますか？`)) return;
-
+  if (!window.confirm(`「${file.name}」を投稿済みフォルダへ移動しますか？`)) return;
+  
   let url = state.serverUrl;
   if (!url) {
     url = prompt('Backend Server URL:', state.serverUrl);
@@ -654,13 +426,16 @@ async function moveToPosted(file) {
   try {
     const res = await fetch(`${url}/api/x-move-to-posted`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: folderPath })
+      headers: { 
+        'Content-Type': 'application/json',
+        
+      },
+      body: JSON.stringify({ path: file.path })
     });
     const data = await res.json();
     if (res.ok) {
-      alert(`${folderName} を投稿済みに移動しました。`);
-      loadDraftsAndPosted(); // UIを再読み込み
+      alert('移動しました。GitHub Actions による更新まで少し時間がかかる場合があります。');
+      loadRoot();
     } else {
       alert('移動に失敗しました: ' + data.details);
     }
@@ -671,69 +446,13 @@ async function moveToPosted(file) {
   }
 }
 
-async function deleteDraftFolder(file) {
-  // Get parent folder path (e.g. artisans/x-poster/drafts/20260316_soft_kill_system)
-  const folderPath = file.path.replace(/\/[^/]+$/, '');
-  const folderName = folderPath.split('/').pop();
-  if (!confirm(`「${folderName}」フォルダごと削除しますか？`)) return;
-
-  let url = state.serverUrl;
-  if (!url) {
-    url = prompt('Backend Server URL:', state.serverUrl);
-    if (!url) return;
-    state.serverUrl = url;
-  }
-
-  dom.loading.style.display = 'block';
-  try {
-    const res = await fetch(`${url}/api/x-delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: folderPath })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(`${folderName} を削除しました。`);
-      loadDraftsAndPosted();
-    } else {
-      alert('削除に失敗しました: ' + (data.details || data.error));
-    }
-  } catch (e) {
-    alert('サーバーに接続できません。');
-  } finally {
-    dom.loading.style.display = 'none';
-  }
+function extractDateFromPath(filePath) {
+  const match = filePath.match(/(\d{4})(\d{2})(\d{2})/);
+  if (match) return `${match[1]}/${match[2]}/${match[3]}`;
+  return '';
 }
 
-async function deleteFile(file) {
-  let url = state.serverUrl;
-  if (!url) {
-    url = prompt('Backend Server URL:', state.serverUrl);
-    if (!url) return;
-    state.serverUrl = url;
-  }
-
-  dom.loading.style.display = 'block';
-  try {
-    const res = await fetch(`${url}/api/x-delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: file.path })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(`${file.name} を削除しました。`);
-      loadDraftsAndPosted();
-    } else {
-      alert('削除に失敗しました: ' + (data.details || data.error));
-    }
-  } catch (e) {
-    alert('サーバーに接続できません。');
-  } finally {
-    dom.loading.style.display = 'none';
-  }
-}
-
+// --- Execute Posting ---
 async function executePosting(dryRun) {
   if (!state.currentFile || !state.currentFile.path) return;
   
@@ -744,16 +463,6 @@ async function executePosting(dryRun) {
     state.serverUrl = url;
     localStorage.setItem('re_server_url', url);
   }
-
-  // Only confirm for Dry Run or if we want to be safe, but for Rocket button (dryRun=false), let's skip it if already confirmed or if user wants immediate.
-  // Actually, per user request "Rocket button clicked -> Immediate post", we skip confirm here.
-  // But wait, the rocket button handler calls executePosting(false).
-  // Let's make it so it only confirms if it's NOT a direct rocket launch.
-  
-  /* 
-  const confirmMsg = dryRun ? 'Dry Run を実行しますか？' : '本当に実投稿しますか？';
-  if (!window.confirm(confirmMsg)) return;
-  */
 
   dom.loading.style.display = 'block';
   try {
@@ -772,16 +481,10 @@ async function executePosting(dryRun) {
     alert(`[${dryRun ? 'Dry Run' : 'Success'}] ${data.message}\n${data.output || ''}`);
   } catch (e) {
     console.error('X-Post Error:', e);
-    alert(`投稿に失敗しました。\nURL: ${url}/api/x-post\nエラー: ${e.message}\n\n※HTTPS(GitHub Pages)からHTTPへのアクセスはブラウザにブロックされる場合があります。`);
+    alert(`投稿に失敗しました。\nURL: ${url}/api/x-post\nエラー: ${e.message}`);
   } finally {
     dom.loading.style.display = 'none';
   }
 }
-
-// Expose functions to global scope for onclick handlers
-window.executePostingForItem = executePostingForItem;
-window.moveToPostedFolder = moveToPostedFolder;
-window.deleteFolder = deleteFolder;
-window.deleteDraftFolder = deleteDraftFolder;
 
 init();

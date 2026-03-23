@@ -23,6 +23,7 @@ body {
   color: var(--text-main);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-y: auto;
   overflow-x: hidden;
   background-image:
     radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
@@ -44,9 +45,7 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: none;
   border-radius: 0;
-  overflow: hidden;
   margin-top: 0;
-  min-height: 100vh;
   display: none;
 }
 
@@ -87,118 +86,10 @@ body {
   color: #fff;
 }
 
-.shortcut-btn {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  transition: background 0.2s;
-}
-
-.shortcut-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-}
-
-.draft-actions {
-  display: flex;
-  gap: 6px;
-  margin-left: 8px;
-}
-
-.action-btn {
-  padding: 2px 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  transition: all 0.2s;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-dim);
-}
-
-.action-btn:hover {
-  color: #fff;
-}
-
-.action-btn.post-btn:hover {
-  background: rgba(59, 130, 246, 0.3);
-}
-
-.action-btn.posted-btn:hover {
-  background: rgba(16, 185, 129, 0.3);
-}
-
-.action-btn.delete-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
-}
-
-.draft-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.draft-item-actions {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.draft-item-actions .action-btn {
-  padding: 2px 6px;
-  font-size: 0.85rem;
-}
-
-.folder-section-header {
-  padding: 8px 12px;
-  margin: 8px 0 4px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-}
-
-.folder-section-header.posted {
-  color: var(--text-dim);
-  margin-top: 16px;
-}
-
-.draft-folder {
-  border-left: 3px solid #3b82f6;
-  padding-left: 8px;
-  margin-left: -8px;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 4px;
-}
-
-.posted-folder {
-  border-left: 3px solid #10b981;
-  padding-left: 8px;
-  margin-left: -8px;
-  background: rgba(16, 185, 129, 0.1);
-  border-radius: 4px;
-  opacity: 0.75;
-}
-
-.draft-folder .name::after {
-  content: " (未投稿)";
-  font-size: 0.75rem;
-  color: #3b82f6;
-}
-
-.posted-folder .name::after {
-  content: " (投稿済み)";
-  font-size: 0.75rem;
-  color: #10b981;
-}
-
 .file-list {
   list-style: none;
   padding: 1rem;
-  overflow-y: auto;
-  max-height: calc(100vh - 120px);
+  padding-bottom: 80px; /* space for dock */
 }
 
 .nested-list {
@@ -263,9 +154,6 @@ body {
   z-index: 3000;
   display: none;
   flex-direction: column;
-  overflow: hidden;
-  height: 100vh;
-  height: 100dvh;
 }
 
 .preview-header {
@@ -287,17 +175,13 @@ body {
   margin-right: 1rem;
 }
 
-.preview-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
-  -webkit-overflow-scrolling: touch;
-}
-
 #preview-body {
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
 }
 
 #preview-body pre {
@@ -307,8 +191,8 @@ body {
   font-size: 0.85rem;
   line-height: 1.5;
   margin: 0;
+  width: 100%;
   padding: 1rem 1.5rem;
-  box-sizing: border-box;
 }
 
 #preview-body img,
@@ -644,3 +528,4 @@ h1 {
     font-size: 2rem !important; 
   }
 }
+/* trigger 1774273586 */
