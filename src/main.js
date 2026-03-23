@@ -85,6 +85,39 @@ async function githubFetch(path) {
 async function loadRoot() {
   const data = await githubFetch('');
   renderTree(data, dom.fileList);
+  // Auto-expand x-poster/drafts folder
+  autoExpandPath('artisans/x-poster/drafts');
+}
+
+// Auto-expand a folder path on page load
+async function autoExpandPath(targetPath) {
+  const parts = targetPath.split('/').filter(Boolean);
+  let container = dom.fileList;
+  
+  for (const part of parts) {
+    await new Promise(r => setTimeout(r, 100)); // wait for render
+    const items = container.querySelectorAll(':scope > li');
+    for (const li of items) {
+      const itemEl = li.querySelector('.file-item');
+      if (!itemEl) continue;
+      const nameEl = itemEl.querySelector('.name');
+      if (nameEl && nameEl.textContent === part) {
+        const itemDiv = itemEl;
+        const nestedUl = li.querySelector('.nested-list');
+        if (nestedUl && itemDiv.classList.contains('file-item')) {
+          itemDiv.classList.add('expanded');
+          nestedUl.style.display = 'block';
+          if (nestedUl.children.length === 0) {
+            const path = parts.slice(0, parts.indexOf(part) + 1).join('/');
+            const children = await githubFetch(path);
+            renderTree(children, nestedUl, path);
+          }
+          container = nestedUl;
+          break;
+        }
+      }
+    }
+  }
 }
 
 function renderTree(items, container, currentPath = '') {
