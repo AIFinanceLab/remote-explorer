@@ -86,7 +86,7 @@ async function loadRoot() {
   const data = await githubFetch('');
   renderTree(data, dom.fileList);
   // Auto-expand x-poster/drafts folder
-  autoExpandPath('artisans/x-poster/drafts');
+  autoExpandPath('workers/x-poster/drafts');
 }
 
 // Auto-expand a folder path on page load
@@ -126,8 +126,8 @@ function renderTree(items, container, currentPath = '') {
   // Sort: Directories first
   items.sort((a, b) => (b.type === 'dir' ? 1 : -1) - (a.type === 'dir' ? 1 : -1));
 
-  const isDraftsFolder = currentPath.includes('artisans/x-poster/drafts');
-  const isPostedFolder = currentPath.includes('artisans/x-poster/posted');
+  const isDraftsFolder = currentPath.includes('workers/x-poster/drafts');
+  const isPostedFolder = currentPath.includes('workers/x-poster/posted');
 
   items.forEach(item => {
     const li = document.createElement('li');
@@ -226,8 +226,8 @@ async function previewFile(file) {
   dom.previewOverlay.style.display = 'flex';
 
   // Show appropriate action buttons based on folder location
-  const isDraft = file.path.includes('artisans/x-poster/drafts');
-  const isPosted = file.path.includes('artisans/x-poster/posted');
+  const isDraft = file.path.includes('workers/x-poster/drafts');
+  const isPosted = file.path.includes('workers/x-poster/posted');
   
   if (file.name.endsWith('.md') && isDraft) {
     dom.btnXPost.innerText = '🚀 投稿';
